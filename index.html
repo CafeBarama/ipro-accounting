@@ -127,6 +127,7 @@
     <div class="row" style="margin-bottom:14px">
       <button class="btn gray sm" id="backBtn">→ بازگشت به لیست</button>
       <div class="spacer"></div>
+      <button class="btn ghost sm" id="settleBtn">🖨️ برگهٔ ترک کار</button>
       <button class="btn ghost sm" id="editEmpBtn">ویرایش مشخصات</button>
     </div>
 
@@ -150,7 +151,7 @@
     <!-- فایل‌ها -->
     <div class="card">
       <div class="row"><div class="h3">مدارک و قرارداد</div><div class="spacer"></div>
-        <select id="f_kind" style="max-width:140px"><option>مدرک</option><option>قرارداد</option></select>
+        <select id="f_kind" style="max-width:160px"><option>مدرک</option><option>قرارداد</option><option>برگه تسویه</option></select>
         <input type="file" id="f_file" style="max-width:230px">
         <button class="btn ghost sm" id="uploadBtn">آپلود</button>
       </div>
@@ -213,6 +214,8 @@
     <div><label>شماره حساب</label><input id="e_account" inputmode="numeric"></div>
     <div><label>شماره شبا (بدون IR)</label><input id="e_sheba" inputmode="numeric"></div>
     <div><label>شماره بیمه</label><input id="e_insnum" inputmode="numeric"></div>
+    <div><label>تاریخ ترک کار</label><input id="e_end" type="date"></div>
+    <div><label>علت ترک کار</label><input id="e_end_reason" placeholder="اختیاری"></div>
   </div>
   <div style="margin-top:12px"><label>آدرس</label><textarea id="e_address"></textarea></div>
   <div style="margin-top:12px"><label>یادداشت</label><input id="e_notes"></div>

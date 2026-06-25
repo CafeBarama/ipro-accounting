@@ -6,6 +6,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = (id) => document.getElementById(id);
 const fa = (n) => (n == null || isNaN(n) ? "۰" : Number(Math.round(n)).toLocaleString("fa-IR"));
 const toman = (n) => fa(n) + " ت";
+const faD = (s) => String(s||"").replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d]);
 function todayISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 let TT; function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(TT); TT=setTimeout(()=>t.classList.remove("show"),2400); }
 
@@ -87,10 +88,10 @@ function renderStaff(){
   $("staffEmpty").style.display = EMPLOYEES.length? "none":"block";
   $("staffList").innerHTML = list.map(e=>{
     const t=totals(e.id);
-    return `<div class="emp-card" onclick="openEmployee(${e.id})">
+    return `<div class="emp-card" onclick="openEmployee(${e.id})" style="${e.end_date?'opacity:.7':''}">
       <div class="avatar">${initials(e.full_name)}</div>
       <div style="flex:1">
-        <b>${e.full_name}</b>
+        <b>${e.full_name}</b> ${e.end_date?`<span class="pill" style="background:#fdecea;color:var(--danger)">ترک کار</span>`:``}
         <div class="muted" style="font-size:12.5px">${e.position||"—"} • حقوق ${toman(e.monthly_salary)}</div>
         <div style="font-size:12.5px;margin-top:4px">مانده: <b style="color:${t.remaining>0?'var(--danger)':'var(--ok)'}">${toman(t.remaining)}</b></div>
       </div>
@@ -107,6 +108,7 @@ function openEmpDialog(e){
   $("e_national").value=e?.national_id||""; $("e_phone").value=e?.phone||""; $("e_start").value=e?.start_date||"";
   $("e_salary").value=e?.monthly_salary??""; $("e_bank").value=e?.bank_name||""; $("e_account").value=e?.account_number||"";
   $("e_sheba").value=e?.sheba||""; $("e_insnum").value=e?.insurance_number||""; $("e_address").value=e?.address||"";
+  $("e_end").value=e?.end_date||""; $("e_end_reason").value=e?.end_reason||"";
   $("e_notes").value=e?.notes||""; $("e_photo").value="";
   empDlg.showModal();
 }
@@ -121,6 +123,7 @@ $("empSave").onclick=async()=>{
     monthly_salary:Number($("e_salary").value)||0, bank_name:$("e_bank").value.trim()||null,
     account_number:$("e_account").value.trim()||null, sheba:$("e_sheba").value.trim()||null,
     insurance_number:$("e_insnum").value.trim()||null, address:$("e_address").value.trim()||null,
+    end_date:$("e_end").value||null, end_reason:$("e_end_reason").value.trim()||null,
     notes:$("e_notes").value.trim()||null
   };
   const id=$("e_id").value;
@@ -142,13 +145,15 @@ async function openEmployee(id, keepTab){
   CURRENT=id; if(!keepTab) showTab("profile");
   const e=EMPLOYEES.find(x=>x.id===id); if(!e) return;
   $("p_name").textContent=e.full_name;
-  $("p_meta").textContent=`${e.position||"—"} • شروع: ${e.start_date? e.start_date.replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d]) : "—"}`;
+  $("p_meta").innerHTML=`${e.position||"—"} • شروع: ${e.start_date? faD(e.start_date) : "—"}`
+    + (e.end_date?` • <span style="color:var(--danger);font-weight:700">ترک کار: ${faD(e.end_date)}${e.end_reason?" ("+e.end_reason+")":""}</span>`:"");
   $("p_avatar").textContent=initials(e.full_name);
   if(e.photo_url){ const s=await db.storage.from(FILES_BUCKET).createSignedUrl(e.photo_url,3600);
     if(s.data) $("p_avatar").innerHTML=`<img src="${s.data.signedUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`; }
   const D=[["کد ملی",e.national_id],["تلفن",e.phone],["حقوق ماهیانه",e.monthly_salary!=null?toman(e.monthly_salary):null],
     ["بانک",e.bank_name],["شماره حساب",e.account_number],["شماره شبا",e.sheba?("IR"+e.sheba):null],
-    ["شماره بیمه",e.insurance_number],["آدرس",e.address],["یادداشت",e.notes]];
+    ["شماره بیمه",e.insurance_number],["تاریخ ترک کار",e.end_date],["علت ترک کار",e.end_reason],
+    ["آدرس",e.address],["یادداشت",e.notes]];
   $("p_details").innerHTML=D.map(([k,v])=>`<div class="stat"><small>${k}</small><b style="font-size:14px">${v? String(v).replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d]) : "—"}</b></div>`).join("");
   // خلاصه
   const t=totals(id);
@@ -205,7 +210,7 @@ function renderRecList(type){
       <td><b>${toman(r.amount)}</b></td>
       ${c.kind?`<td>${r.kind||""}</td>`:""}
       <td style="color:var(--muted)">${r[c.txt]||""}</td>
-      <td style="text-align:left"><button class="btn danger sm" onclick="delRec('${type}',${r.id})">حذف</button></td>
+      <td style="text-align:left">${type==='payment'?`<button class="btn ghost sm" onclick="printReceipt(${r.id})">رسید</button> `:""}<button class="btn danger sm" onclick="delRec('${type}',${r.id})">حذف</button></td>
     </tr>`).join("")}</tbody></table>` : `<div class="muted" style="font-size:13px">موردی ثبت نشده.</div>`;
 }
 const recDlg=$("recDialog");
@@ -231,6 +236,115 @@ $("recSave").onclick=async()=>{
 window.delRec=async(type,id)=>{ if(!confirm("حذف شود؟"))return;
   const {error}=await db.from(REC[type].tbl).delete().eq("id",id);
   if(error)return toast("خطا در حذف"); toast("حذف شد"); await loadAll(); };
+
+/* ---------------- رسید پرداخت حقوق ---------------- */
+window.printReceipt=(payId)=>{
+  const p=PAY.find(x=>x.id===payId); if(!p) return;
+  const e=EMPLOYEES.find(x=>x.id===p.employee_id)||{};
+  const t=totals(e.id);
+  const row=(k,v,c)=>`<tr><td class="k">${k}</td><td class="v" style="${c||''}">${v}</td></tr>`;
+  const html=`<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8">
+<title>رسید پرداخت حقوق</title>
+<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;font-family:Vazirmatn,system-ui,sans-serif}
+  body{margin:0;background:#eef0f5;color:#1f2430;padding:20px}
+  .sheet{max-width:480px;margin:0 auto;background:#fff;border:1px solid #e7e9f0;border-radius:16px;padding:26px;box-shadow:0 6px 24px rgba(0,0,0,.06)}
+  .hd{text-align:center;border-bottom:2px solid #3b5bdb;padding-bottom:12px;margin-bottom:14px}
+  .hd b{font-size:20px;color:#3b5bdb} .hd div{color:#7a8194;font-size:13px;margin-top:3px}
+  .meta{display:flex;justify-content:space-between;font-size:12.5px;color:#7a8194;margin-bottom:14px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td{padding:9px 6px;border-bottom:1px solid #eef0f5}
+  td.k{color:#7a8194;width:45%} td.v{font-weight:700;text-align:left}
+  .amount{background:#eaeefe;color:#3b5bdb;border-radius:12px;padding:14px;text-align:center;margin:16px 0;font-size:22px;font-weight:800}
+  .amount small{display:block;color:#7a8194;font-weight:500;font-size:12px;margin-bottom:4px}
+  .sign{display:flex;justify-content:space-between;margin-top:34px;font-size:13px;color:#7a8194}
+  .sign div{text-align:center;width:45%} .sign .line{margin-top:40px;border-top:1px dashed #aab;padding-top:6px}
+  .btn{display:block;margin:18px auto 0;background:#3b5bdb;color:#fff;border:0;padding:11px 22px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  @media print{ body{background:#fff;padding:0} .sheet{box-shadow:none;border:0} .noprint{display:none} }
+</style></head><body>
+<div class="sheet">
+  <div class="hd"><b>رسید پرداخت حقوق</b><div>کافه باراما — حسابداری iPro</div></div>
+  <div class="meta"><span>شماره رسید: ${faD(p.id)}</span><span>تاریخ: ${faD(p[REC.payment.date]||"")}</span></div>
+  <table>
+    ${row("نام نیرو", e.full_name||"—")}
+    ${row("کد ملی", faD(e.national_id||"—"))}
+    ${row("سمت", e.position||"—")}
+    ${row("بابت", p.kind||"حقوق")}
+    ${p.note?row("توضیح", p.note):""}
+  </table>
+  <div class="amount"><small>مبلغ پرداختی</small>${faD((+p.amount||0).toLocaleString("en-US"))} تومان</div>
+  <table>
+    ${row("حقوق ماهیانه", toman(t.salary))}
+    ${row("کسورات (جریمه+غذا+بیمه)", toman(t.fines+t.food+t.ins), "color:#d8584f")}
+    ${row("خالص قابل پرداخت", toman(t.net))}
+    ${row("کل پرداخت‌شده تا کنون", toman(t.paid), "color:#2e7d6b")}
+    ${row("مانده", toman(t.remaining))}
+  </table>
+  <div class="sign"><div><div class="line">امضای پرداخت‌کننده</div></div><div><div class="line">امضای دریافت‌کننده</div></div></div>
+  <button class="btn noprint" onclick="window.print()">🖨️ چاپ / ذخیره PDF</button>
+</div></body></html>`;
+  const w=window.open("","_blank","width=560,height=780");
+  if(!w){ toast("اجازهٔ باز شدن پنجره را بده (popup)"); return; }
+  w.document.write(html); w.document.close();
+};
+
+/* ---------------- برگهٔ ترک کار / تسویه‌حساب ---------------- */
+$("settleBtn").onclick = ()=> printSettlement(CURRENT);
+function printSettlement(id){
+  const e=EMPLOYEES.find(x=>x.id===id); if(!e) return;
+  const t=totals(id);
+  const row=(k,v,c)=>`<tr><td class="k">${k}</td><td class="v" style="${c||''}">${v}</td></tr>`;
+  const today=todayISO();
+  const html=`<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8">
+<title>برگهٔ ترک کار و تسویه‌حساب</title>
+<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;font-family:Vazirmatn,system-ui,sans-serif}
+  body{margin:0;background:#eef0f5;color:#1f2430;padding:20px}
+  .sheet{max-width:540px;margin:0 auto;background:#fff;border:1px solid #e7e9f0;border-radius:16px;padding:28px;box-shadow:0 6px 24px rgba(0,0,0,.06)}
+  .hd{text-align:center;border-bottom:2px solid #3b5bdb;padding-bottom:12px;margin-bottom:16px}
+  .hd b{font-size:20px;color:#3b5bdb} .hd div{color:#7a8194;font-size:13px;margin-top:3px}
+  .meta{display:flex;justify-content:space-between;font-size:12.5px;color:#7a8194;margin-bottom:14px}
+  p.txt{font-size:13.5px;line-height:2;color:#333;margin:14px 0}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  td{padding:9px 6px;border-bottom:1px solid #eef0f5}
+  td.k{color:#7a8194;width:48%} td.v{font-weight:700;text-align:left}
+  .final{background:#eaeefe;color:#3b5bdb;border-radius:12px;padding:14px;text-align:center;margin:16px 0;font-size:20px;font-weight:800}
+  .final small{display:block;color:#7a8194;font-weight:500;font-size:12px;margin-bottom:4px}
+  .sign{display:flex;justify-content:space-between;margin-top:40px;font-size:13px;color:#7a8194}
+  .sign div{text-align:center;width:45%} .sign .line{margin-top:44px;border-top:1px dashed #aab;padding-top:6px}
+  .btn{display:block;margin:18px auto 0;background:#3b5bdb;color:#fff;border:0;padding:11px 22px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  @media print{ body{background:#fff;padding:0} .sheet{box-shadow:none;border:0} .noprint{display:none} }
+</style></head><body>
+<div class="sheet">
+  <div class="hd"><b>برگهٔ ترک کار و تسویه‌حساب</b><div>کافه باراما — حسابداری iPro</div></div>
+  <div class="meta"><span>نام نیرو: ${e.full_name||"—"}</span><span>تاریخ تنظیم: ${faD(today)}</span></div>
+  <table>
+    ${row("کد ملی", faD(e.national_id||"—"))}
+    ${row("سمت", e.position||"—")}
+    ${row("تاریخ شروع به کار", e.start_date?faD(e.start_date):"—")}
+    ${row("تاریخ ترک کار", e.end_date?faD(e.end_date):"—", "color:#d8584f")}
+    ${e.end_reason?row("علت ترک کار", e.end_reason):""}
+  </table>
+  <p class="txt">بدین‌وسیله گواهی می‌شود همکاری آقای/خانم <b>${e.full_name||"—"}</b> با کافه باراما در تاریخ فوق خاتمه یافته و حساب‌وکتاب مالی ایشان به شرح زیر تسویه گردید:</p>
+  <table>
+    ${row("حقوق ماهیانه", toman(t.salary))}
+    ${row("جمع جریمه‌ها", toman(t.fines), "color:#d8584f")}
+    ${row("جمع هزینهٔ غذا", toman(t.food), "color:#d8584f")}
+    ${row("جمع بیمه (سهم نیرو)", toman(t.ins), "color:#d8584f")}
+    ${row("خالص قابل پرداخت", toman(t.net))}
+    ${row("کل پرداخت‌شده", toman(t.paid), "color:#2e7d6b")}
+  </table>
+  <div class="final"><small>${t.remaining>=0?"مبلغ قابل پرداخت به نیرو (تسویه)":"بدهی نیرو به کافه"}</small>${toman(Math.abs(t.remaining))}</div>
+  <p class="txt">اینجانب با امضای این برگه، دریافت مبلغ تسویه را تأیید نموده و هیچ‌گونه ادعای مالی دیگری نسبت به کافه باراما ندارم.</p>
+  <div class="sign"><div><div class="line">امضای کارفرما</div></div><div><div class="line">امضای نیرو</div></div></div>
+  <button class="btn noprint" onclick="window.print()">🖨️ چاپ / ذخیره PDF</button>
+</div></body></html>`;
+  const w=window.open("","_blank","width=580,height=820");
+  if(!w){ toast("اجازهٔ باز شدن پنجره را بده (popup)"); return; }
+  w.document.write(html); w.document.close();
+}
 
 /* ---------------- گزارش کلی ---------------- */
 function renderReport(){

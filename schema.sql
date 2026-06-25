@@ -22,10 +22,15 @@ create table if not exists employees (
   account_number  text,                  -- شماره حساب
   sheba           text,                  -- شماره شبا
   insurance_number text,                 -- شماره بیمه
+  end_date        date,                  -- تاریخ ترک کار
+  end_reason      text,                  -- علت ترک کار
   notes           text,
   active          boolean default true,
   created_at      timestamptz default now()
 );
+-- اگر جدول employees از قبل ساخته شده:
+alter table employees add column if not exists end_date date;
+alter table employees add column if not exists end_reason text;
 
 -- ---------- پرداختی‌ها ----------
 create table if not exists payments (
