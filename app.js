@@ -24,7 +24,9 @@ function isoToShamsi(iso){ if(!iso) return ""; const d=new Date(String(iso).leng
 function shamsiToISO(s){ if(!s) return null; s=String(s).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d));
   const m=s.match(/(\d{3,4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!m||typeof jalaali==="undefined") return null;
   const g=jalaali.toGregorian(+m[1],+m[2],+m[3]); return `${g.gy}-${String(g.gm).padStart(2,"0")}-${String(g.gd).padStart(2,"0")}`; }
-let TT; function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(TT); TT=setTimeout(()=>t.classList.remove("show"),2400); }
+let TT; function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(TT); TT=setTimeout(()=>t.classList.remove("show"),4000); }
+window.addEventListener("error", e => toast("خطای برنامه: "+(e.message||"")));
+window.addEventListener("unhandledrejection", e => toast("خطا: "+((e.reason&&e.reason.message)||e.reason||"")));
 
 let EMPLOYEES=[], PAY=[], FIN=[], FOOD=[], INS=[], SAL=[], CURRENT=null;
 
@@ -153,8 +155,8 @@ $("empSave").onclick=async()=>{
   };
   const id=$("e_id").value;
   let savedId=id;
-  if(id){ const {error}=await db.from("employees").update(rec).eq("id",id); if(error)return toast("خطا در ذخیره"); }
-  else { const {data,error}=await db.from("employees").insert(rec).select("id").single(); if(error)return toast("خطا در ذخیره"); savedId=data.id; }
+  if(id){ const {error}=await db.from("employees").update(rec).eq("id",id); if(error){console.error(error);return toast("خطا: "+error.message);} }
+  else { const {data,error}=await db.from("employees").insert(rec).select("id").single(); if(error){console.error(error);return toast("خطا: "+error.message);} savedId=data.id; }
   // عکس
   const pf=$("e_photo").files[0];
   if(pf){ const path=`photos/${savedId}_${pf.name}`;
@@ -298,7 +300,7 @@ $("recSave").onclick=async()=>{
   rec[c.txt]=$("r_text").value.trim()||null;
   if(c.kind) rec.kind=$("r_kind").value;
   const {error}=await db.from(c.tbl).insert(rec);
-  if(error){ console.error(error); return toast("خطا در ذخیره"); }
+  if(error){ console.error(error); return toast("خطا: "+error.message); }
   toast("✓ ثبت شد"); recDlg.close(); await loadAll();
 };
 window.delRec=async(type,id)=>{ if(!confirm("حذف شود؟"))return;
