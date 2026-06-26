@@ -16,9 +16,17 @@ function jalali(iso){
   catch(e){ return faD(iso); }
 }
 function todayISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function todayShamsiStr(){ try{ const d=new Date(); const j=jalaali.toJalaali(d.getFullYear(),d.getMonth()+1,d.getDate());
+  return `${j.jy}/${String(j.jm).padStart(2,"0")}/${String(j.jd).padStart(2,"0")}`; }catch(e){ return todayISO(); } }
+function isoToShamsi(iso){ if(!iso) return ""; const d=new Date(String(iso).length<=10?iso+"T00:00:00":iso);
+  if(isNaN(d)||typeof jalaali==="undefined") return ""; const j=jalaali.toJalaali(d.getFullYear(),d.getMonth()+1,d.getDate());
+  return `${j.jy}/${String(j.jm).padStart(2,"0")}/${String(j.jd).padStart(2,"0")}`; }
+function shamsiToISO(s){ if(!s) return null; s=String(s).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+  const m=s.match(/(\d{3,4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!m||typeof jalaali==="undefined") return null;
+  const g=jalaali.toGregorian(+m[1],+m[2],+m[3]); return `${g.gy}-${String(g.gm).padStart(2,"0")}-${String(g.gd).padStart(2,"0")}`; }
 let TT; function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(TT); TT=setTimeout(()=>t.classList.remove("show"),2400); }
 
-let EMPLOYEES=[], PAY=[], FIN=[], FOOD=[], INS=[], CURRENT=null;
+let EMPLOYEES=[], PAY=[], FIN=[], FOOD=[], INS=[], SAL=[], CURRENT=null;
 
 /* ---------------- ورود / احراز هویت ---------------- */
 async function checkAuth(){
@@ -68,15 +76,16 @@ function showTab(name){
 
 /* ---------------- بارگذاری داده ---------------- */
 async function loadAll(){
-  const [emp,pay,fin,food,ins] = await Promise.all([
+  const [emp,pay,fin,food,ins,sal] = await Promise.all([
     db.from("employees").select("*").order("full_name"),
     db.from("payments").select("*"),
     db.from("fines").select("*"),
     db.from("food_usage").select("*"),
     db.from("insurance").select("*"),
+    db.from("salary_changes").select("*"),
   ]);
   if(emp.error){ toast("خطا در اتصال — schema را اجرا کردی؟"); console.error(emp.error); }
-  EMPLOYEES=emp.data||[]; PAY=pay.data||[]; FIN=fin.data||[]; FOOD=food.data||[]; INS=ins.data||[];
+  EMPLOYEES=emp.data||[]; PAY=pay.data||[]; FIN=fin.data||[]; FOOD=food.data||[]; INS=ins.data||[]; SAL=sal.data||[];
   renderStaff();
   if(CURRENT) openEmployee(CURRENT, true);
 }
@@ -88,6 +97,13 @@ function totals(id){
   return { salary, fines, food, ins, paid, net, remaining: net-paid };
 }
 const initials=(name)=> (name||"؟").trim().charAt(0);
+// آیا موعد بازبینی حقوق رسیده؟ (۱ ماه از شروع گذشته و هنوز افزایشی ثبت نشده)
+function reviewDue(e){
+  if(!e || !e.start_date || e.end_date) return false;
+  if(SAL.some(s=>s.employee_id===e.id)) return false;
+  const start=new Date(e.start_date), now=new Date();
+  return (now-start) >= 30*24*60*60*1000;
+}
 
 /* ---------------- لیست نیروها ---------------- */
 function renderStaff(){
@@ -99,7 +115,7 @@ function renderStaff(){
     return `<div class="emp-card" onclick="openEmployee(${e.id})" style="${e.end_date?'opacity:.7':''}">
       <div class="avatar">${initials(e.full_name)}</div>
       <div style="flex:1">
-        <b>${e.full_name}</b> ${e.end_date?`<span class="pill" style="background:#fdecea;color:var(--danger)">ترک کار</span>`:``}
+        <b>${e.full_name}</b> ${e.end_date?`<span class="pill" style="background:#fdecea;color:var(--danger)">ترک کار</span>`:(reviewDue(e)?`<span class="pill" style="background:#fff5e8;color:var(--accent)">موعد بازبینی حقوق</span>`:``)}
         <div class="muted" style="font-size:12.5px">${e.position||"—"} • حقوق ${toman(e.monthly_salary)}</div>
         <div style="font-size:12.5px;margin-top:4px">مانده: <b style="color:${t.remaining>0?'var(--danger)':'var(--ok)'}">${toman(t.remaining)}</b></div>
       </div>
@@ -113,10 +129,10 @@ const empDlg=$("empDialog");
 function openEmpDialog(e){
   $("empTitle").textContent = e? "ویرایش مشخصات":"نیروی جدید";
   $("e_id").value=e?.id||""; $("e_name").value=e?.full_name||""; $("e_position").value=e?.position||"";
-  $("e_national").value=e?.national_id||""; $("e_phone").value=e?.phone||""; $("e_start").value=e?.start_date||"";
+  $("e_national").value=e?.national_id||""; $("e_phone").value=e?.phone||""; $("e_start").value=isoToShamsi(e?.start_date);
   $("e_salary").value=e?.monthly_salary??""; $("e_bank").value=e?.bank_name||""; $("e_account").value=e?.account_number||"";
   $("e_sheba").value=e?.sheba||""; $("e_insnum").value=e?.insurance_number||""; $("e_address").value=e?.address||"";
-  $("e_end").value=e?.end_date||""; $("e_end_reason").value=e?.end_reason||"";
+  $("e_end").value=isoToShamsi(e?.end_date); $("e_end_reason").value=e?.end_reason||"";
   $("e_notes").value=e?.notes||""; $("e_photo").value="";
   empDlg.showModal();
 }
@@ -127,11 +143,11 @@ $("empSave").onclick=async()=>{
   const name=$("e_name").value.trim(); if(!name) return toast("نام را وارد کنید");
   const rec={
     full_name:name, position:$("e_position").value.trim()||null, national_id:$("e_national").value.trim()||null,
-    phone:$("e_phone").value.trim()||null, start_date:$("e_start").value||null,
+    phone:$("e_phone").value.trim()||null, start_date:shamsiToISO($("e_start").value),
     monthly_salary:Number($("e_salary").value)||0, bank_name:$("e_bank").value.trim()||null,
     account_number:$("e_account").value.trim()||null, sheba:$("e_sheba").value.trim()||null,
     insurance_number:$("e_insnum").value.trim()||null, address:$("e_address").value.trim()||null,
-    end_date:$("e_end").value||null, end_reason:$("e_end_reason").value.trim()||null,
+    end_date:shamsiToISO($("e_end").value), end_reason:$("e_end_reason").value.trim()||null,
     notes:$("e_notes").value.trim()||null
   };
   const id=$("e_id").value;
@@ -173,10 +189,51 @@ async function openEmployee(id, keepTab){
     <div class="stat"><small>خالص قابل پرداخت</small><b>${toman(t.net)}</b></div>
     <div class="stat green"><small>پرداخت‌شده</small><b>${toman(t.paid)}</b></div>
     <div class="stat ${t.remaining>0?'red':'green'}"><small>مانده</small><b>${toman(t.remaining)}</b></div>`;
+  renderSalary(id);
   renderFiles(id);
   renderRecList("payment"); renderRecList("fine"); renderRecList("food"); renderRecList("insurance");
 }
 window.openEmployee=openEmployee;
+
+/* ---------------- حقوق و افزایش‌ها ---------------- */
+function renderSalary(id){
+  const e=EMPLOYEES.find(x=>x.id===id)||{};
+  $("p_review").innerHTML = reviewDue(e)
+    ? `<div style="background:#fff5e8;color:var(--accent);border:1px solid #f3d9a8;border-radius:12px;padding:11px 14px;font-size:13.5px">⏰ بیش از یک ماه از شروع به کار گذشته و هنوز افزایش حقوقی ثبت نشده. بسته به عملکرد، می‌توانی افزایش حقوق ثبت کنی.</div>`
+    : "";
+  const rows=SAL.filter(s=>s.employee_id===id).sort((a,b)=>(b.change_date||"").localeCompare(a.change_date||""));
+  const stars=(n)=> n? "★".repeat(n)+"☆".repeat(5-n) : "";
+  $("p_salary").innerHTML = rows.length
+    ? `<table><tbody>${rows.map(s=>`<tr>
+        <td style="width:120px">${jalali(s.change_date)}</td>
+        <td><b>${toman(s.new_salary)}</b></td>
+        <td style="color:var(--accent)">${stars(s.rating)}</td>
+        <td style="color:var(--muted)">${s.note||""}</td>
+        <td style="text-align:left"><button class="btn danger sm" onclick="delRaise(${s.id})">حذف</button></td>
+      </tr>`).join("")}</tbody></table>`
+    : `<div class="muted" style="font-size:13px">هنوز افزایش حقوقی ثبت نشده. حقوق فعلی: <b>${toman(e.monthly_salary)}</b></div>`;
+}
+const raiseDlg=$("raiseDialog");
+$("addRaiseBtn").onclick=()=>{
+  const e=EMPLOYEES.find(x=>x.id===CURRENT)||{};
+  $("rz_emp").textContent=`${e.full_name||""} — حقوق فعلی: ${toman(e.monthly_salary)}`;
+  $("rz_date").value=todayShamsiStr(); $("rz_salary").value=e.monthly_salary||""; $("rz_rating").value=""; $("rz_note").value="";
+  raiseDlg.showModal();
+};
+$("rzCancel").onclick=()=>raiseDlg.close();
+$("rzSave").onclick=async()=>{
+  const sal=Number($("rz_salary").value)||0;
+  if(!sal) return toast("حقوق جدید را وارد کنید");
+  const rec={ employee_id:CURRENT, change_date:shamsiToISO($("rz_date").value)||todayISO(),
+    new_salary:sal, rating:$("rz_rating").value?Number($("rz_rating").value):null, note:$("rz_note").value.trim()||null };
+  const ins=await db.from("salary_changes").insert(rec);
+  if(ins.error){ console.error(ins.error); return toast("خطا — آیا جدول salary_changes ساخته شده؟"); }
+  await db.from("employees").update({monthly_salary:sal}).eq("id",CURRENT);   // حقوق فعلی به‌روز می‌شود
+  toast("✓ افزایش حقوق ثبت شد"); raiseDlg.close(); await loadAll();
+};
+window.delRaise=async(id)=>{ if(!confirm("این رکورد حذف شود؟"))return;
+  const {error}=await db.from("salary_changes").delete().eq("id",id);
+  if(error)return toast("خطا در حذف"); toast("حذف شد"); await loadAll(); };
 
 /* ---------------- فایل‌ها ---------------- */
 async function renderFiles(id){
@@ -224,7 +281,7 @@ function renderRecList(type){
 const recDlg=$("recDialog");
 window.addRecord=(type)=>{
   const c=REC[type]; $("r_type").value=type; $("recTitle").textContent=c.title;
-  $("r_date").value=todayISO(); $("r_amount").value=""; $("r_text").value="";
+  $("r_date").value=todayShamsiStr(); $("r_amount").value=""; $("r_text").value="";
   $("r_textLabel").textContent=c.txtLabel;
   $("r_kindWrap").style.display=c.kind?"block":"none";
   $("r_date").previousElementSibling; // noop
@@ -234,7 +291,7 @@ $("recCancel").onclick=()=>recDlg.close();
 $("recSave").onclick=async()=>{
   const type=$("r_type").value, c=REC[type];
   const rec={ employee_id:CURRENT, amount:Number($("r_amount").value)||0 };
-  rec[c.date]=$("r_date").value||todayISO();
+  rec[c.date]=shamsiToISO($("r_date").value)||todayISO();
   rec[c.txt]=$("r_text").value.trim()||null;
   if(c.kind) rec.kind=$("r_kind").value;
   const {error}=await db.from(c.tbl).insert(rec);
@@ -367,5 +424,6 @@ function renderReport(){
 }
 
 /* ---------------- شروع ---------------- */
+if(typeof jalaliDatepicker!=="undefined") jalaliDatepicker.startWatch({time:false,persianDigit:true,autoHide:true});
 checkAuth();
 db.auth.onAuthStateChange((_e,session)=>{ if(!session) showLogin(); });

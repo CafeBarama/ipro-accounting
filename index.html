@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>حسابداری iPro — کافه باراما</title>
 <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.css">
 <style>
   :root{
     --bg:#f5f6fa; --card:#fff; --ink:#1f2430; --muted:#7a8194; --line:#e7e9f0;
@@ -148,6 +149,14 @@
       <div class="sumgrid" id="p_summary"></div>
     </div>
 
+    <!-- حقوق و افزایش‌ها -->
+    <div class="card">
+      <div class="row"><div class="h3">حقوق و افزایش‌ها</div><div class="spacer"></div>
+        <button class="btn ghost sm" id="addRaiseBtn">+ ثبت افزایش حقوق</button></div>
+      <div id="p_review"></div>
+      <div id="p_salary" style="margin-top:10px"></div>
+    </div>
+
     <!-- فایل‌ها -->
     <div class="card">
       <div class="row"><div class="h3">مدارک و قرارداد</div><div class="spacer"></div>
@@ -208,13 +217,13 @@
     <div><label>سمت</label><input id="e_position" placeholder="باریستا / صندوق / ..."></div>
     <div><label>کد ملی</label><input id="e_national" inputmode="numeric"></div>
     <div><label>تلفن</label><input id="e_phone" inputmode="numeric"></div>
-    <div><label>تاریخ شروع به کار</label><input id="e_start" type="date"></div>
+    <div><label>تاریخ شروع به کار</label><input id="e_start" type="text" data-jdp data-jdp-only-date readonly autocomplete="off" placeholder="انتخاب تاریخ" style="background:#fbfbfd;cursor:pointer"></div>
     <div><label>حقوق ماهیانه (تومان)</label><input id="e_salary" type="number" min="0"></div>
     <div><label>نام بانک</label><input id="e_bank"></div>
     <div><label>شماره حساب</label><input id="e_account" inputmode="numeric"></div>
     <div><label>شماره شبا (بدون IR)</label><input id="e_sheba" inputmode="numeric"></div>
     <div><label>شماره بیمه</label><input id="e_insnum" inputmode="numeric"></div>
-    <div><label>تاریخ ترک کار</label><input id="e_end" type="date"></div>
+    <div><label>تاریخ ترک کار</label><input id="e_end" type="text" data-jdp data-jdp-only-date readonly autocomplete="off" placeholder="انتخاب تاریخ" style="background:#fbfbfd;cursor:pointer"></div>
     <div><label>علت ترک کار</label><input id="e_end_reason" placeholder="اختیاری"></div>
   </div>
   <div style="margin-top:12px"><label>آدرس</label><textarea id="e_address"></textarea></div>
@@ -231,7 +240,7 @@
   <h2 id="recTitle"></h2>
   <input type="hidden" id="r_type">
   <div class="grid g2" style="margin-top:8px">
-    <div><label>تاریخ</label><input id="r_date" type="date"></div>
+    <div><label>تاریخ</label><input id="r_date" type="text" data-jdp data-jdp-only-date readonly autocomplete="off" placeholder="انتخاب تاریخ" style="background:#fbfbfd;cursor:pointer"></div>
     <div><label>مبلغ (تومان)</label><input id="r_amount" type="number" min="0"></div>
   </div>
   <div id="r_kindWrap" style="margin-top:12px"><label>نوع</label>
@@ -246,7 +255,34 @@
 
 <div id="toast"></div>
 
+<!-- دیالوگ ثبت افزایش حقوق -->
+<dialog id="raiseDialog"><div class="modal-body">
+  <h2>ثبت افزایش حقوق</h2>
+  <div class="sub" id="rz_emp"></div>
+  <div class="grid g2" style="margin-top:8px">
+    <div><label>تاریخ</label><input id="rz_date" type="text" data-jdp data-jdp-only-date readonly autocomplete="off" placeholder="انتخاب تاریخ" style="background:#fbfbfd;cursor:pointer"></div>
+    <div><label>حقوق جدید (تومان)</label><input id="rz_salary" type="number" min="0"></div>
+    <div><label>امتیاز عملکرد</label>
+      <select id="rz_rating">
+        <option value="">—</option>
+        <option value="5">★★★★★ عالی</option>
+        <option value="4">★★★★ خوب</option>
+        <option value="3">★★★ متوسط</option>
+        <option value="2">★★ ضعیف</option>
+        <option value="1">★ نیازمند بهبود</option>
+      </select>
+    </div>
+    <div><label>توضیح عملکرد</label><input id="rz_note" placeholder="اختیاری"></div>
+  </div>
+  <div class="row" style="margin-top:18px">
+    <button class="btn" id="rzSave">ذخیره و به‌روزرسانی حقوق</button>
+    <button class="btn gray" id="rzCancel">انصراف</button>
+  </div>
+</div></dialog>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jalaali-js@1.2.6/dist/jalaali.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>

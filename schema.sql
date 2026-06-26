@@ -85,6 +85,17 @@ create table if not exists employee_files (
   created_at  timestamptz default now()
 );
 
+-- ---------- افزایش حقوق / سابقهٔ حقوق ----------
+create table if not exists salary_changes (
+  id          bigint generated always as identity primary key,
+  employee_id bigint references employees(id) on delete cascade,
+  change_date date default current_date,   -- تاریخ افزایش
+  new_salary  numeric default 0,           -- حقوق جدید (تومان)
+  rating      numeric,                     -- امتیاز عملکرد (۱ تا ۵)
+  note        text,                        -- توضیح عملکرد
+  created_at  timestamptz default now()
+);
+
 create index if not exists payments_emp_idx  on payments(employee_id);
 create index if not exists fines_emp_idx      on fines(employee_id);
 create index if not exists food_emp_idx       on food_usage(employee_id);
@@ -97,7 +108,7 @@ create index if not exists files_emp_idx      on employee_files(employee_id);
 do $$
 declare t text;
 begin
-  foreach t in array array['employees','payments','fines','food_usage','insurance','employee_files']
+  foreach t in array array['employees','payments','fines','food_usage','insurance','employee_files','salary_changes']
   loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists owner_all on %I', t);
