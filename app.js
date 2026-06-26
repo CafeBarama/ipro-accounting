@@ -7,6 +7,14 @@ const $ = (id) => document.getElementById(id);
 const fa = (n) => (n == null || isNaN(n) ? "۰" : Number(Math.round(n)).toLocaleString("fa-IR"));
 const toman = (n) => fa(n) + " ت";
 const faD = (s) => String(s||"").replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d]);
+// تبدیل تاریخ میلادی (ISO) به شمسی
+function jalali(iso){
+  if(!iso) return "";
+  const d=new Date(String(iso).length<=10 ? iso+"T00:00:00" : iso);
+  if(isNaN(d)) return faD(iso);
+  try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian",{year:"numeric",month:"2-digit",day:"2-digit"}).format(d); }
+  catch(e){ return faD(iso); }
+}
 function todayISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 let TT; function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(TT); TT=setTimeout(()=>t.classList.remove("show"),2400); }
 
@@ -145,14 +153,14 @@ async function openEmployee(id, keepTab){
   CURRENT=id; if(!keepTab) showTab("profile");
   const e=EMPLOYEES.find(x=>x.id===id); if(!e) return;
   $("p_name").textContent=e.full_name;
-  $("p_meta").innerHTML=`${e.position||"—"} • شروع: ${e.start_date? faD(e.start_date) : "—"}`
-    + (e.end_date?` • <span style="color:var(--danger);font-weight:700">ترک کار: ${faD(e.end_date)}${e.end_reason?" ("+e.end_reason+")":""}</span>`:"");
+  $("p_meta").innerHTML=`${e.position||"—"} • شروع: ${e.start_date? jalali(e.start_date) : "—"}`
+    + (e.end_date?` • <span style="color:var(--danger);font-weight:700">ترک کار: ${jalali(e.end_date)}${e.end_reason?" ("+e.end_reason+")":""}</span>`:"");
   $("p_avatar").textContent=initials(e.full_name);
   if(e.photo_url){ const s=await db.storage.from(FILES_BUCKET).createSignedUrl(e.photo_url,3600);
     if(s.data) $("p_avatar").innerHTML=`<img src="${s.data.signedUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`; }
   const D=[["کد ملی",e.national_id],["تلفن",e.phone],["حقوق ماهیانه",e.monthly_salary!=null?toman(e.monthly_salary):null],
     ["بانک",e.bank_name],["شماره حساب",e.account_number],["شماره شبا",e.sheba?("IR"+e.sheba):null],
-    ["شماره بیمه",e.insurance_number],["تاریخ ترک کار",e.end_date],["علت ترک کار",e.end_reason],
+    ["شماره بیمه",e.insurance_number],["تاریخ ترک کار",e.end_date?jalali(e.end_date):null],["علت ترک کار",e.end_reason],
     ["آدرس",e.address],["یادداشت",e.notes]];
   $("p_details").innerHTML=D.map(([k,v])=>`<div class="stat"><small>${k}</small><b style="font-size:14px">${v? String(v).replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d]) : "—"}</b></div>`).join("");
   // خلاصه
@@ -206,7 +214,7 @@ function dataOf(type){ return {payment:PAY,fine:FIN,food:FOOD,insurance:INS}[typ
 function renderRecList(type){
   const c=REC[type]; const rows=dataOf(type).filter(r=>r.employee_id===CURRENT).sort((a,b)=>(b[c.date]||"").localeCompare(a[c.date]||""));
   $(c.el).innerHTML = rows.length? `<table><tbody>${rows.map(r=>`<tr>
-      <td style="width:120px">${String(r[c.date]||"").replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d])}</td>
+      <td style="width:120px">${jalali(r[c.date])}</td>
       <td><b>${toman(r.amount)}</b></td>
       ${c.kind?`<td>${r.kind||""}</td>`:""}
       <td style="color:var(--muted)">${r[c.txt]||""}</td>
@@ -265,7 +273,7 @@ window.printReceipt=(payId)=>{
 </style></head><body>
 <div class="sheet">
   <div class="hd"><b>رسید پرداخت حقوق</b><div>کافه باراما — حسابداری iPro</div></div>
-  <div class="meta"><span>شماره رسید: ${faD(p.id)}</span><span>تاریخ: ${faD(p[REC.payment.date]||"")}</span></div>
+  <div class="meta"><span>شماره رسید: ${faD(p.id)}</span><span>تاریخ: ${jalali(p[REC.payment.date])}</span></div>
   <table>
     ${row("نام نیرو", e.full_name||"—")}
     ${row("کد ملی", faD(e.national_id||"—"))}
@@ -319,12 +327,12 @@ function printSettlement(id){
 </style></head><body>
 <div class="sheet">
   <div class="hd"><b>برگهٔ ترک کار و تسویه‌حساب</b><div>کافه باراما — حسابداری iPro</div></div>
-  <div class="meta"><span>نام نیرو: ${e.full_name||"—"}</span><span>تاریخ تنظیم: ${faD(today)}</span></div>
+  <div class="meta"><span>نام نیرو: ${e.full_name||"—"}</span><span>تاریخ تنظیم: ${jalali(today)}</span></div>
   <table>
     ${row("کد ملی", faD(e.national_id||"—"))}
     ${row("سمت", e.position||"—")}
-    ${row("تاریخ شروع به کار", e.start_date?faD(e.start_date):"—")}
-    ${row("تاریخ ترک کار", e.end_date?faD(e.end_date):"—", "color:#d8584f")}
+    ${row("تاریخ شروع به کار", e.start_date?jalali(e.start_date):"—")}
+    ${row("تاریخ ترک کار", e.end_date?jalali(e.end_date):"—", "color:#d8584f")}
     ${e.end_reason?row("علت ترک کار", e.end_reason):""}
   </table>
   <p class="txt">بدین‌وسیله گواهی می‌شود همکاری آقای/خانم <b>${e.full_name||"—"}</b> با کافه باراما در تاریخ فوق خاتمه یافته و حساب‌وکتاب مالی ایشان به شرح زیر تسویه گردید:</p>
