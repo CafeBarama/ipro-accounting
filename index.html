@@ -63,9 +63,9 @@
   .sumgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
   #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:99}
   #toast.show{opacity:1}
-  dialog{border:0;border-radius:18px;padding:0;box-shadow:0 20px 60px rgba(0,0,0,.25);max-width:640px;width:92%}
-  dialog::backdrop{background:rgba(20,24,32,.45)}
-  .modal-body{padding:22px}
+  .modal-ovl{display:none;position:fixed;inset:0;background:rgba(20,24,32,.45);z-index:50;align-items:flex-start;justify-content:center;overflow:auto;padding:28px 12px}
+  .modal-ovl.open{display:flex}
+  .modal-ovl .modal-body{background:#fff;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-width:640px;width:100%;padding:22px;margin:auto}
   /* login */
   #loginView{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
   .login-box{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:30px;max-width:380px;width:100%}
@@ -209,7 +209,7 @@
 </div>
 
 <!-- دیالوگ مشخصات نیرو -->
-<dialog id="empDialog"><div class="modal-body">
+<div id="empDialog" class="modal-ovl"><div class="modal-body">
   <h2 id="empTitle">نیروی جدید</h2>
   <input type="hidden" id="e_id">
   <div class="grid g2" style="margin-top:8px">
@@ -233,10 +233,10 @@
     <button class="btn" id="empSave">ذخیره</button>
     <button class="btn gray" id="empCancel">انصراف</button>
   </div>
-</div></dialog>
+</div></div>
 
 <!-- دیالوگ ثبت رکورد مالی -->
-<dialog id="recDialog"><div class="modal-body">
+<div id="recDialog" class="modal-ovl"><div class="modal-body">
   <h2 id="recTitle"></h2>
   <input type="hidden" id="r_type">
   <div class="grid g2" style="margin-top:8px">
@@ -251,12 +251,12 @@
     <button class="btn" id="recSave">ذخیره</button>
     <button class="btn gray" id="recCancel">انصراف</button>
   </div>
-</div></dialog>
+</div></div>
 
 <div id="toast"></div>
 
 <!-- دیالوگ ثبت افزایش حقوق -->
-<dialog id="raiseDialog"><div class="modal-body">
+<div id="raiseDialog" class="modal-ovl"><div class="modal-body">
   <h2>ثبت افزایش حقوق</h2>
   <div class="sub" id="rz_emp"></div>
   <div class="grid g2" style="margin-top:8px">
@@ -278,7 +278,7 @@
     <button class="btn" id="rzSave">ذخیره و به‌روزرسانی حقوق</button>
     <button class="btn gray" id="rzCancel">انصراف</button>
   </div>
-</div></dialog>
+</div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jalaali-js@1.2.6/dist/jalaali.min.js"></script>

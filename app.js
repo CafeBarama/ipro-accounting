@@ -126,6 +126,7 @@ $("staffSearch").oninput = renderStaff;
 
 /* ---------------- افزودن/ویرایش نیرو ---------------- */
 const empDlg=$("empDialog");
+empDlg.showModal=()=>empDlg.classList.add("open"); empDlg.close=()=>empDlg.classList.remove("open");
 function openEmpDialog(e){
   $("empTitle").textContent = e? "ویرایش مشخصات":"نیروی جدید";
   $("e_id").value=e?.id||""; $("e_name").value=e?.full_name||""; $("e_position").value=e?.position||"";
@@ -214,6 +215,7 @@ function renderSalary(id){
     : `<div class="muted" style="font-size:13px">هنوز افزایش حقوقی ثبت نشده. حقوق فعلی: <b>${toman(e.monthly_salary)}</b></div>`;
 }
 const raiseDlg=$("raiseDialog");
+raiseDlg.showModal=()=>raiseDlg.classList.add("open"); raiseDlg.close=()=>raiseDlg.classList.remove("open");
 $("addRaiseBtn").onclick=()=>{
   const e=EMPLOYEES.find(x=>x.id===CURRENT)||{};
   $("rz_emp").textContent=`${e.full_name||""} — حقوق فعلی: ${toman(e.monthly_salary)}`;
@@ -279,6 +281,7 @@ function renderRecList(type){
     </tr>`).join("")}</tbody></table>` : `<div class="muted" style="font-size:13px">موردی ثبت نشده.</div>`;
 }
 const recDlg=$("recDialog");
+recDlg.showModal=()=>recDlg.classList.add("open"); recDlg.close=()=>recDlg.classList.remove("open");
 window.addRecord=(type)=>{
   const c=REC[type]; $("r_type").value=type; $("recTitle").textContent=c.title;
   $("r_date").value=todayShamsiStr(); $("r_amount").value=""; $("r_text").value="";
