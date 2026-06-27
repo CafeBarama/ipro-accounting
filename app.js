@@ -311,7 +311,7 @@ function renderRecList(type){
       <td><b>${toman(r.amount)}</b></td>
       ${c.kind?`<td>${r.kind||""}</td>`:""}
       <td style="color:var(--muted)">${r[c.txt]||""}</td>
-      <td style="text-align:left">${type==='payment'?`<button class="btn ghost sm" onclick="printReceipt(${r.id})">رسید</button> `:""}<button class="btn danger sm" onclick="delRec('${type}',${r.id})">حذف</button></td>
+      <td style="text-align:left">${type==='payment'?`<button class="btn ghost sm" onclick="printReceipt(${r.id})">رسید</button> ${r.receipt_path?`<button class="btn gray sm" onclick="viewPayReceipt('${r.receipt_path}')">📎 فایل رسید</button> `:""}<button class="btn gray sm" onclick="uploadPayReceipt(${r.id})">${r.receipt_path?"تعویض فایل":"⬆️ آپلود رسید"}</button> `:""}<button class="btn danger sm" onclick="delRec('${type}',${r.id})">حذف</button></td>
     </tr>`).join("")}</tbody></table>` : `<div class="muted" style="font-size:13px">موردی ثبت نشده.</div>`;
 }
 const recDlg=$("recDialog");
@@ -338,6 +338,33 @@ $("recSave").onclick=async()=>{
 window.delRec=async(type,id)=>{ if(!confirm("حذف شود؟"))return;
   const {error}=await db.from(REC[type].tbl).delete().eq("id",id);
   if(error)return toast("خطا در حذف"); toast("حذف شد"); await loadAll(); };
+
+/* ---------------- آپلود/مشاهدهٔ فایل رسید پرداخت ---------------- */
+let _payReceiptTarget=null;
+function ensurePayReceiptInput(){
+  if($("payReceiptInput")) return;
+  const inp=document.createElement("input");
+  inp.type="file"; inp.id="payReceiptInput"; inp.accept="image/*,application/pdf"; inp.style.display="none";
+  inp.onchange=async()=>{
+    const f=inp.files[0], id=_payReceiptTarget; _payReceiptTarget=null;
+    if(!f||!id){ inp.value=""; return; }
+    const safe=(f.name||"receipt").replace(/[^\w.\-]+/g,"_");
+    const path=`receipts/${id}_${Date.now()}_${safe}`;
+    toast("در حال آپلود رسید…");
+    const up=await db.storage.from(FILES_BUCKET).upload(path,f,{upsert:true});
+    inp.value="";
+    if(up.error){ console.error(up.error); return toast("خطا در آپلود رسید"); }
+    const {error}=await db.from("payments").update({receipt_path:path}).eq("id",id);
+    if(error){ console.error(error); return toast("خطا: "+error.message); }
+    toast("✓ رسید آپلود شد"); await loadAll();
+  };
+  document.body.appendChild(inp);
+}
+window.uploadPayReceipt=(id)=>{ ensurePayReceiptInput(); _payReceiptTarget=id; $("payReceiptInput").click(); };
+window.viewPayReceipt=async(path)=>{
+  const s=await db.storage.from(FILES_BUCKET).createSignedUrl(path,3600);
+  if(s.data) window.open(s.data.signedUrl,"_blank"); else toast("خطا در باز کردن فایل");
+};
 
 /* ---------------- رسید پرداخت حقوق ---------------- */
 window.printReceipt=(payId)=>{

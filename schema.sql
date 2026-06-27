@@ -40,8 +40,10 @@ create table if not exists payments (
   amount      numeric default 0,         -- مبلغ (تومان)
   kind        text default 'حقوق',       -- حقوق / علی‌الحساب / پاداش / سایر
   note        text,
+  receipt_path text,                      -- مسیر فایل رسید واریزی در باکت hr-files
   created_at  timestamptz default now()
 );
+alter table payments add column if not exists receipt_path text;
 
 -- ---------- جریمه‌ها ----------
 create table if not exists fines (
