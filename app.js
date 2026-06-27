@@ -28,7 +28,7 @@ let TT; function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add(
 window.addEventListener("error", e => toast("خطای برنامه: "+(e.message||"")));
 window.addEventListener("unhandledrejection", e => toast("خطا: "+((e.reason&&e.reason.message)||e.reason||"")));
 
-let EMPLOYEES=[], PAY=[], FIN=[], FOOD=[], INS=[], SAL=[], CURRENT=null;
+let EMPLOYEES=[], PAY=[], FIN=[], FOOD=[], INS=[], SAL=[], ATT=[], LEAVES=[], CURRENT=null;
 
 /* ---------------- ورود / احراز هویت ---------------- */
 async function checkAuth(){
@@ -67,6 +67,8 @@ document.querySelectorAll("#nav button[data-tab]").forEach(b=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
     b.classList.add("active"); $("tab-"+b.dataset.tab).classList.add("active");
     if(b.dataset.tab==="report") renderReport();
+    if(b.dataset.tab==="attendance") renderAttendance();
+    if(b.dataset.tab==="leaves") renderLeaves();
   };
 });
 $("backBtn").onclick = ()=> showTab("staff");
@@ -78,17 +80,23 @@ function showTab(name){
 
 /* ---------------- بارگذاری داده ---------------- */
 async function loadAll(){
-  const [emp,pay,fin,food,ins,sal] = await Promise.all([
+  const [emp,pay,fin,food,ins,sal,att,lv] = await Promise.all([
     db.from("employees").select("*").order("full_name"),
     db.from("payments").select("*"),
     db.from("fines").select("*"),
     db.from("food_usage").select("*"),
     db.from("insurance").select("*"),
     db.from("salary_changes").select("*"),
+    db.from("attendance").select("*"),
+    db.from("leave_requests").select("*"),
   ]);
   if(emp.error){ toast("خطا در اتصال — schema را اجرا کردی؟"); console.error(emp.error); }
   EMPLOYEES=emp.data||[]; PAY=pay.data||[]; FIN=fin.data||[]; FOOD=food.data||[]; INS=ins.data||[]; SAL=sal.data||[];
-  renderStaff();
+  ATT=att.data||[]; LEAVES=lv.data||[];
+  renderStaff(); updateLeaveBadge();
+  const activeTab=document.querySelector(".tab.active")?.id;
+  if(activeTab==="tab-attendance") renderAttendance();
+  if(activeTab==="tab-leaves") renderLeaves();
   if(CURRENT) openEmployee(CURRENT, true);
 }
 function totals(id){
@@ -192,11 +200,35 @@ async function openEmployee(id, keepTab){
     <div class="stat"><small>خالص قابل پرداخت</small><b>${toman(t.net)}</b></div>
     <div class="stat green"><small>پرداخت‌شده</small><b>${toman(t.paid)}</b></div>
     <div class="stat ${t.remaining>0?'red':'green'}"><small>مانده</small><b>${toman(t.remaining)}</b></div>`;
+  renderAttLink(e);
   renderSalary(id);
   renderFiles(id);
   renderRecList("payment"); renderRecList("fine"); renderRecList("food"); renderRecList("insurance");
 }
 window.openEmployee=openEmployee;
+
+/* ---------------- لینک حضور و غیاب در پروندهٔ نیرو ---------------- */
+function attLinkFor(token){ return token ? new URL("attendance.html?t="+token, location.href).href : ""; }
+function renderAttLink(e){
+  const link = attLinkFor(e.att_token);
+  $("p_attLink").value = link || "— پس از اجرای schema و یک بار ذخیره، لینک ساخته می‌شود —";
+  $("p_shiftSel").value = e.shift||"";
+  const sp=$("p_shiftPill");
+  sp.textContent = e.shift==="morning"?"شیفت ثابت صبح" : e.shift==="evening"?"شیفت ثابت عصر" : "تشخیص خودکار شیفت";
+}
+$("copyLinkBtn").onclick = async ()=>{
+  const v=$("p_attLink").value; if(!v.startsWith("http")) return toast("لینک هنوز ساخته نشده");
+  try{ await navigator.clipboard.writeText(v); toast("✓ لینک کپی شد"); }
+  catch(_){ $("p_attLink").select(); document.execCommand("copy"); toast("✓ لینک کپی شد"); }
+};
+$("p_shiftSel").onchange = async (ev)=>{
+  if(!CURRENT) return;
+  const val=ev.target.value||null;
+  const {error}=await db.from("employees").update({shift:val}).eq("id",CURRENT);
+  if(error) return toast("خطا در ذخیرهٔ شیفت");
+  const e=EMPLOYEES.find(x=>x.id===CURRENT); if(e) e.shift=val;
+  renderAttLink(e); toast("✓ شیفت ذخیره شد");
+};
 
 /* ---------------- حقوق و افزایش‌ها ---------------- */
 function renderSalary(id){
@@ -427,6 +459,129 @@ function renderReport(){
     <td><b style="color:${t.remaining>0?'var(--danger)':'var(--ok)'}">${fa(t.remaining)}</b></td>
   </tr>`; }).join("");
 }
+
+/* ---------------- حضور و غیاب: ابزار تاریخ ---------------- */
+const J_MONTHS=["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
+const SHIFT_FA={morning:"صبح",evening:"عصر"};
+const pad2=(n)=>String(n).padStart(2,"0");
+function jToday(){ const d=new Date(); return jalaali.toJalaali(d.getFullYear(),d.getMonth()+1,d.getDate()); }
+function jMonthRange(jy,jm){
+  const g1=jalaali.toGregorian(jy,jm,1), len=jalaali.jalaaliMonthLength(jy,jm), g2=jalaali.toGregorian(jy,jm,len);
+  return { start:`${g1.gy}-${pad2(g1.gm)}-${pad2(g1.gd)}`, end:`${g2.gy}-${pad2(g2.gm)}-${pad2(g2.gd)}` };
+}
+function clockOf(ts){ if(!ts) return "—"; const d=new Date(ts); return faD(`${pad2(d.getHours())}:${pad2(d.getMinutes())}`); }
+const dailySalary=(e)=> (+(e&&e.monthly_salary)||0)/30;
+
+/* ---------------- نشان مرخصی‌های در انتظار ---------------- */
+function updateLeaveBadge(){
+  const n=LEAVES.filter(l=>l.status==="pending").length;
+  const b=$("leaveBadge"); if(!b) return;
+  b.style.display = n? "inline-block":"none"; b.textContent = faD(n);
+}
+
+/* ---------------- مرخصی‌ها ---------------- */
+const LV_TYPE={daily:"روزانه",hourly:"ساعتی"};
+const LV_BADGE={pending:'<span class="pill" style="background:#fff5e8;color:var(--accent)">در انتظار</span>',
+  approved:'<span class="pill" style="background:#e6f4f0;color:var(--ok)">تأیید شد</span>',
+  rejected:'<span class="pill" style="background:#fdecea;color:var(--danger)">رد شد</span>'};
+function renderLeaves(){
+  const filter=$("lvFilter").value;
+  const rows=LEAVES.filter(l=>filter==="all"||l.status===filter).sort((a,b)=>b.id-a.id);
+  $("leavesEmpty").style.display=rows.length?"none":"block";
+  $("leavesList").innerHTML=rows.map(l=>{
+    const e=EMPLOYEES.find(x=>x.id===l.employee_id)||{};
+    const when = l.type==="hourly"
+      ? `${jalali(l.start_date)} • ${faD(l.hours)} ساعت`
+      : `${jalali(l.start_date)} تا ${jalali(l.end_date)} (${faD(((new Date(l.end_date)-new Date(l.start_date))/86400000)+1)} روز)`;
+    return `<div class="card" style="margin-bottom:12px">
+      <div class="row"><div class="avatar">${initials(e.full_name)}</div>
+        <div style="flex:1"><b>${e.full_name||"—"}</b> <span class="pill">${LV_TYPE[l.type]||l.type}</span>
+          <div class="muted" style="font-size:12.5px;margin-top:3px">${when}</div></div>
+        <div>${LV_BADGE[l.status]||""}</div></div>
+      ${l.reason?`<div style="font-size:13px;margin-top:10px"><span class="muted">توضیح نیرو:</span> ${l.reason}</div>`:""}
+      ${l.admin_note?`<div style="font-size:13px;margin-top:6px;color:var(--accent)">پاسخ مدیر: ${l.admin_note}</div>`:""}
+      ${l.status==="pending"?`
+        <div class="row" style="margin-top:12px">
+          <input id="lvnote_${l.id}" placeholder="یادداشت برای نیرو (اختیاری)" style="flex:1">
+          <button class="btn sm" style="background:var(--ok)" onclick="decideLeave(${l.id},'approved')">✓ تأیید</button>
+          <button class="btn sm" style="background:var(--danger)" onclick="decideLeave(${l.id},'rejected')">✕ رد</button>
+        </div>`:""}
+    </div>`;
+  }).join("");
+}
+$("lvFilter").onchange=renderLeaves;
+window.decideLeave=async(id,status)=>{
+  const note=($("lvnote_"+id)?.value||"").trim()||null;
+  const {error}=await db.from("leave_requests").update({status,admin_note:note,decided_at:new Date().toISOString()}).eq("id",id);
+  if(error) return toast("خطا: "+error.message);
+  toast(status==="approved"?"✓ مرخصی تأیید شد":"درخواست رد شد");
+  await loadAll();
+};
+
+/* ---------------- گزارش ماهانهٔ حضور و غیاب ---------------- */
+function fillAttSelectors(){
+  if($("att_year").options.length) return;
+  const j=jToday();
+  for(let y=j.jy; y>=j.jy-2; y--){ const o=document.createElement("option"); o.value=y; o.textContent=faD(y); $("att_year").appendChild(o); }
+  J_MONTHS.forEach((nm,i)=>{ const o=document.createElement("option"); o.value=i+1; o.textContent=nm; $("att_month").appendChild(o); });
+  $("att_year").value=j.jy; $("att_month").value=j.jm;
+  $("att_year").onchange=renderAttendance; $("att_month").onchange=renderAttendance;
+}
+function renderAttendance(){
+  fillAttSelectors();
+  const jy=+$("att_year").value, jm=+$("att_month").value;
+  const {start,end}=jMonthRange(jy,jm);
+  const inRange=(d)=> d && d>=start && d<=end;
+  const monthAtt=ATT.filter(a=>inRange(a.work_date));
+  const monthLeave=LEAVES.filter(l=>l.status==="approved" && inRange(l.start_date));
+
+  // ردیف هر نیرو
+  const ids=[...new Set([...monthAtt.map(a=>a.employee_id), ...monthLeave.map(l=>l.employee_id)])];
+  const tb=$("attTable").querySelector("tbody");
+  $("attEmpty").style.display = ids.length? "none":"block";
+  tb.innerHTML=ids.map(id=>{
+    const e=EMPLOYEES.find(x=>x.id===id)||{}; const ds=dailySalary(e);
+    const recs=monthAtt.filter(a=>a.employee_id===id);
+    const days=new Set(recs.filter(a=>a.check_in).map(a=>a.work_date)).size;
+    const totalLate=recs.reduce((s,a)=>s+(+a.late_minutes||0),0);
+    const lateDed=recs.reduce((s,a)=>s+Math.max(0,(+a.late_minutes||0)-10)*ds/480,0);
+    const lvHours=monthLeave.filter(l=>l.employee_id===id).reduce((s,l)=>s+(+l.hours||0),0);
+    const excess=Math.max(0,lvHours-16);
+    const leaveDed=excess*ds/8;
+    const total=Math.round(lateDed+leaveDed);
+    return `<tr>
+      <td><b>${e.full_name||"—"}</b></td>
+      <td>${faD(days)}</td>
+      <td>${totalLate>0?faD(totalLate)+" د":"—"}</td>
+      <td style="color:var(--danger)">${lateDed>0?toman(lateDed):"—"}</td>
+      <td>${lvHours>0?faD(lvHours)+" س":"—"}</td>
+      <td>${excess>0?faD(excess)+" س":"—"}</td>
+      <td style="color:var(--danger)">${leaveDed>0?toman(leaveDed):"—"}</td>
+      <td><b style="color:var(--danger)">${total>0?toman(total):"۰"}</b></td>
+      <td style="text-align:left">${total>0?`<button class="btn ghost sm" onclick="applyAttDeduction(${id},${jy},${jm},${total})">ثبت کسر</button>`:""}</td>
+    </tr>`;
+  }).join("");
+
+  // جدول جزئیات
+  const log=monthAtt.slice().sort((a,b)=> (b.work_date||"").localeCompare(a.work_date||"") || a.employee_id-b.employee_id);
+  const lb=$("attLogTable").querySelector("tbody");
+  $("attLogEmpty").style.display=log.length?"none":"block";
+  lb.innerHTML=log.map(a=>{ const e=EMPLOYEES.find(x=>x.id===a.employee_id)||{}; return `<tr>
+    <td>${jalali(a.work_date)}</td><td>${e.full_name||"—"}</td>
+    <td>${SHIFT_FA[a.shift]||"—"}</td><td>${clockOf(a.check_in)}</td><td>${clockOf(a.check_out)}</td>
+    <td style="${a.late_minutes>10?'color:var(--danger);font-weight:700':''}">${a.late_minutes>0?faD(a.late_minutes)+" د":"—"}</td>
+  </tr>`; }).join("");
+}
+window.applyAttDeduction=async(empId,jy,jm,amount)=>{
+  if(amount<=0) return toast("کسری برای ثبت نیست");
+  const reason=`کسر حضور و غیاب ${faD(jy+"/"+pad2(jm))} (تأخیر + مرخصی)`;
+  if(FIN.some(f=>f.employee_id===empId && f.reason===reason)){
+    if(!confirm("برای این ماه قبلاً کسر ثبت شده. دوباره ثبت شود؟")) return;
+  } else if(!confirm(`ثبت کسر ${toman(amount)} به‌عنوان جریمه برای این نیرو؟`)) return;
+  const {error}=await db.from("fines").insert({employee_id:empId, fine_date:jMonthRange(jy,jm).end, amount, reason});
+  if(error) return toast("خطا: "+error.message);
+  toast("✓ کسر به‌عنوان جریمه ثبت شد"); await loadAll();
+};
 
 /* ---------------- شروع ---------------- */
 if(typeof jalaliDatepicker!=="undefined") jalaliDatepicker.startWatch({time:false,persianDigit:true,autoHide:true});

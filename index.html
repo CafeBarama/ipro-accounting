@@ -100,6 +100,8 @@
     <div class="logo">📒 حسابداری iPro <small>کافه باراما</small></div>
     <nav id="nav">
       <button data-tab="staff" class="active">نیروها</button>
+      <button data-tab="attendance">حضور و غیاب</button>
+      <button data-tab="leaves">مرخصی‌ها <span id="leaveBadge" class="pill" style="background:#fdecea;color:var(--danger);display:none"></span></button>
       <button data-tab="report">گزارش کلی</button>
       <span class="muted" id="whoami" style="font-size:12px"></span>
       <button class="btn gray sm" id="logoutBtn">خروج</button>
@@ -141,6 +143,22 @@
         </div>
       </div>
       <div class="grid g3" id="p_details" style="margin-top:16px"></div>
+    </div>
+
+    <!-- لینک حضور و غیاب -->
+    <div class="card">
+      <div class="row"><div class="h3">لینک حضور و غیاب این نیرو</div><div class="spacer"></div>
+        <span class="pill" id="p_shiftPill"></span></div>
+      <div class="sub" style="margin:6px 0 10px">این لینک اختصاصی را برای نیرو بفرستید؛ بدون ورود، فقط ثبت تردد و درخواست مرخصی.</div>
+      <div class="row">
+        <input id="p_attLink" readonly style="flex:1;direction:ltr;font-size:12.5px" placeholder="—">
+        <button class="btn ghost sm" id="copyLinkBtn">📋 کپی لینک</button>
+        <select id="p_shiftSel" style="max-width:200px">
+          <option value="">شیفت: تشخیص خودکار</option>
+          <option value="morning">شیفت ثابت صبح (۸–۱۶)</option>
+          <option value="evening">شیفت ثابت عصر (۱۵–۲۳)</option>
+        </select>
+      </div>
     </div>
 
     <!-- خلاصهٔ مالی -->
@@ -188,6 +206,58 @@
         <button class="btn ghost sm" onclick="addRecord('insurance')">+ ثبت بیمه</button></div>
       <div id="p_insurance"></div>
     </div>
+  </section>
+
+  <!-- ===== حضور و غیاب ===== -->
+  <section id="tab-attendance" class="tab">
+    <div class="card">
+      <div class="row">
+        <div><h2>گزارش ماهانهٔ حضور و غیاب</h2><div class="sub" style="margin:0">تأخیر و مرخصی هر ماه شمسی + محاسبهٔ کسر حقوق</div></div>
+        <div class="spacer"></div>
+        <select id="att_year" style="max-width:110px"></select>
+        <select id="att_month" style="max-width:130px"></select>
+      </div>
+      <div class="sub" style="margin-top:12px;line-height:1.9">
+        ارفاق تأخیر: ۱۰ دقیقه در هر روز • کسر تأخیر = حقوق روزانه × (دقایق تأخیر بعد از ارفاق ÷ ۴۸۰)<br>
+        سهمیهٔ مرخصی: ۱۶ ساعت (۲ روز) با حقوق در هر ماه • مازاد = حقوق روزانه × (ساعت مازاد ÷ ۸)
+      </div>
+    </div>
+    <div class="card">
+      <div style="overflow:auto">
+        <table id="attTable">
+          <thead><tr>
+            <th>نام</th><th>روز حاضر</th><th>کل تأخیر</th><th>کسر تأخیر</th>
+            <th>مرخصی (ساعت)</th><th>مازاد مرخصی</th><th>کسر مرخصی</th><th>جمع کسر</th><th></th>
+          </tr></thead><tbody></tbody>
+        </table>
+      </div>
+      <div class="empty" id="attEmpty" style="display:none">برای این ماه ترددی ثبت نشده.</div>
+    </div>
+    <div class="card">
+      <div class="h3">جزئیات تردد این ماه</div>
+      <div style="overflow:auto"><table id="attLogTable">
+        <thead><tr><th>تاریخ</th><th>نام</th><th>شیفت</th><th>ورود</th><th>خروج</th><th>تأخیر</th></tr></thead><tbody></tbody>
+      </table></div>
+      <div class="empty" id="attLogEmpty" style="display:none">رکوردی نیست.</div>
+    </div>
+  </section>
+
+  <!-- ===== مرخصی‌ها ===== -->
+  <section id="tab-leaves" class="tab">
+    <div class="card">
+      <div class="row">
+        <div><h2>درخواست‌های مرخصی</h2><div class="sub" style="margin:0">تأیید یا رد درخواست‌های کارکنان</div></div>
+        <div class="spacer"></div>
+        <select id="lvFilter" style="max-width:160px">
+          <option value="pending">در انتظار بررسی</option>
+          <option value="approved">تأییدشده</option>
+          <option value="rejected">ردشده</option>
+          <option value="all">همه</option>
+        </select>
+      </div>
+    </div>
+    <div id="leavesList" class="grid" style="grid-template-columns:1fr"></div>
+    <div class="empty" id="leavesEmpty" style="display:none">درخواستی در این دسته نیست.</div>
   </section>
 
   <!-- ===== گزارش کلی ===== -->

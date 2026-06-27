@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حضور و غیاب — کافه باراما</title>
+<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.css">
+<style>
+  :root{
+    --bg:#f5f6fa; --card:#fff; --ink:#1f2430; --muted:#7a8194; --line:#e7e9f0;
+    --brand:#3b5bdb; --brand-soft:#eaeefe; --accent:#c98a2b; --danger:#d8584f; --ok:#2e7d6b; --radius:16px;
+    --shadow:0 6px 24px rgba(31,36,48,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Vazirmatn,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+  .wrap{max-width:520px;margin:0 auto;padding:18px 16px 60px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px}
+  .brand{font-weight:800;font-size:20px;color:var(--brand);text-align:center}
+  .brand small{display:block;color:var(--muted);font-weight:500;font-size:12.5px;margin-top:3px}
+  h2{margin:0 0 4px;font-size:17px}
+  .sub{color:var(--muted);font-size:13px}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+  input,select,textarea{width:100%;font-family:inherit;font-size:14px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fbfbfd;color:var(--ink);outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--brand);background:#fff}
+  textarea{resize:vertical;min-height:54px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;padding:14px 18px;border-radius:14px;background:var(--brand);color:#fff;width:100%}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn.out{background:var(--accent)}
+  .btn.ghost{background:var(--brand-soft);color:var(--brand);font-size:14px;padding:11px 16px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pill{display:inline-block;font-size:11.5px;padding:3px 9px;border-radius:20px;font-weight:700}
+  .pill.green{background:#e6f4f0;color:var(--ok)} .pill.red{background:#fdecea;color:var(--danger)}
+  .pill.gray{background:#eef0f5;color:var(--muted)} .pill.amber{background:#fff5e8;color:var(--accent)}
+  .pill.blue{background:var(--brand-soft);color:var(--brand)}
+  .big{font-size:26px;font-weight:800;text-align:center;margin:6px 0}
+  .note{font-size:13px;border-radius:12px;padding:11px 14px;margin-top:12px;line-height:1.8}
+  .note.ok{background:#e6f4f0;color:#1d6b58} .note.err{background:#fdecea;color:#a5342c} .note.info{background:var(--brand-soft);color:#2c43a8}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  .muted{color:var(--muted)}
+  .center{text-align:center}
+  .loc{font-size:12px;color:var(--muted);text-align:center;margin-top:10px;min-height:18px}
+  #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:99;max-width:90%}
+  #toast.show{opacity:1}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card center">
+    <div class="brand">⏰ حضور و غیاب<small>کافه باراما</small></div>
+  </div>
+
+  <!-- خطای توکن -->
+  <div id="invalid" class="card hidden">
+    <div class="note err">این لینک نامعتبر است یا دیگر فعال نیست. لطفاً با مدیر هماهنگ کنید.</div>
+  </div>
+
+  <div id="main" class="hidden">
+    <!-- وضعیت امروز + ورود/خروج -->
+    <div class="card">
+      <div class="row">
+        <div style="flex:1"><h2 id="empName">—</h2><div class="sub" id="todayStr">—</div></div>
+        <div id="statusPill"></div>
+      </div>
+      <div id="todayInfo" class="sub" style="margin:12px 0 4px"></div>
+      <div id="actionWrap" style="margin-top:14px"></div>
+      <div class="loc" id="locStatus"></div>
+      <div id="actionNote"></div>
+    </div>
+
+    <!-- درخواست مرخصی -->
+    <div class="card">
+      <h2>درخواست مرخصی</h2>
+      <div class="sub" style="margin-bottom:14px">روزانه یا ساعتی — پس از ثبت، مدیر تأیید یا رد می‌کند.</div>
+      <label>نوع مرخصی</label>
+      <select id="lv_type" style="margin-bottom:12px">
+        <option value="daily">روزانه</option>
+        <option value="hourly">ساعتی</option>
+      </select>
+      <div id="dailyFields">
+        <div class="grid2">
+          <div><label>از تاریخ</label><input id="lv_start" type="text" data-jdp data-jdp-only-date readonly autocomplete="off" placeholder="انتخاب تاریخ" style="cursor:pointer"></div>
+          <div><label>تا تاریخ</label><input id="lv_end" type="text" data-jdp data-jdp-only-date readonly autocomplete="off" placeholder="انتخاب تاریخ" style="cursor:pointer"></div>
+        </div>
+      </div>
+      <div id="hourlyFields" class="hidden">
+        <div class="grid2">
+          <div><label>تاریخ</label><input id="lv_hdate" type="text" data-jdp data-jdp-only-date readonly autocomplete="off" placeholder="انتخاب تاریخ" style="cursor:pointer"></div>
+          <div><label>تعداد ساعت</label><input id="lv_hours" type="number" min="0.5" step="0.5" placeholder="مثلاً ۲"></div>
+        </div>
+      </div>
+      <div style="margin-top:12px"><label>توضیح (اختیاری)</label><textarea id="lv_reason" placeholder="علت مرخصی…"></textarea></div>
+      <button class="btn ghost" id="lvSubmit" style="margin-top:14px">ثبت درخواست مرخصی</button>
+      <div class="sub center" style="margin-top:10px">سهمیهٔ ماهانه: ۲ روز با حقوق (۱۶ ساعت). بیشتر از آن از حقوق کسر می‌شود.</div>
+    </div>
+
+    <!-- مرخصی‌های من -->
+    <div class="card">
+      <h2>درخواست‌های مرخصی من</h2>
+      <div id="myLeaves" style="margin-top:10px"></div>
+    </div>
+
+    <!-- تاریخچهٔ حضور -->
+    <div class="card">
+      <h2>آخرین ترددها</h2>
+      <div id="myAtt" style="margin-top:10px;overflow:auto"></div>
+    </div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jalaali-js@1.2.6/dist/jalaali.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.js"></script>
+<script src="config.js"></script>
+<script>
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = (id)=>document.getElementById(id);
+const TOKEN = new URLSearchParams(location.search).get("t");
+const faD = (s)=>String(s??"").replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d]);
+let TT; function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(TT); TT=setTimeout(()=>t.classList.remove("show"),3800); }
+
+// ---- تبدیل تاریخ ----
+function isoToShamsi(iso){ if(!iso) return ""; const d=new Date(String(iso).length<=10?iso+"T00:00:00":iso);
+  if(isNaN(d)||typeof jalaali==="undefined") return ""; const j=jalaali.toJalaali(d.getFullYear(),d.getMonth()+1,d.getDate());
+  return `${j.jy}/${String(j.jm).padStart(2,"0")}/${String(j.jd).padStart(2,"0")}`; }
+function shamsiToISO(s){ if(!s) return null; s=String(s).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+  const m=s.match(/(\d{3,4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(!m||typeof jalaali==="undefined") return null;
+  const g=jalaali.toGregorian(+m[1],+m[2],+m[3]); return `${g.gy}-${String(g.gm).padStart(2,"0")}-${String(g.gd).padStart(2,"0")}`; }
+function clock(ts){ if(!ts) return "—"; const d=new Date(ts);
+  return faD(`${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`); }
+const SHIFT_FA = {morning:"صبح (۸ تا ۱۶)", evening:"عصر (۱۵ تا ۲۳)"};
+
+// ---- پیام خطای توابع ----
+function humanError(msg){
+  msg = String(msg||"");
+  if(msg.includes("OUT_OF_RANGE")){ const m=msg.match(/OUT_OF_RANGE:(\d+)/); const d=m?faD(m[1]):"?";
+    return `شما داخل محدودهٔ مجاز کافه نیستید (فاصله حدود ${d} متر). برای ثبت باید داخل کافه و در شعاع ۵۰ متری باشید.`; }
+  if(msg.includes("TOKEN_INVALID")) return "لینک نامعتبر است.";
+  if(msg.includes("NO_LOCATION")) return "موقعیت مکانی دریافت نشد. دسترسی به موقعیت را روشن کنید.";
+  if(msg.includes("ALREADY_IN")) return "قبلاً ورود ثبت شده است.";
+  if(msg.includes("NO_OPEN_CHECKIN")) return "ورودِ بازی برای ثبت خروج پیدا نشد.";
+  if(msg.includes("BAD_RANGE")) return "تاریخ پایان باید بعد از تاریخ شروع باشد.";
+  if(msg.includes("BAD_HOURS")) return "تعداد ساعت را درست وارد کنید.";
+  if(msg.includes("BAD_DATE")) return "تاریخ را انتخاب کنید.";
+  return "خطا: "+msg;
+}
+
+// ---- گرفتن موقعیت مکانی ----
+function getLocation(){
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation) return reject(new Error("دستگاه شما از موقعیت مکانی پشتیبانی نمی‌کند"));
+    $("locStatus").textContent = "در حال دریافت موقعیت مکانی…";
+    navigator.geolocation.getCurrentPosition(
+      p=>{ $("locStatus").textContent=""; resolve({lat:p.coords.latitude, lng:p.coords.longitude}); },
+      err=>{ $("locStatus").textContent="";
+        reject(new Error(err.code===1?"دسترسی به موقعیت رد شد. لطفاً اجازهٔ موقعیت مکانی را بدهید.":"دریافت موقعیت ناموفق بود. دوباره تلاش کنید.")); },
+      {enableHighAccuracy:true, timeout:15000, maximumAge:0}
+    );
+  });
+}
+
+// ---- وضعیت امروز ----
+let STATE=null;
+async function refresh(){
+  const { data, error } = await db.rpc("att_whoami",{p_token:TOKEN});
+  if(error){ $("invalid").classList.remove("hidden"); $("main").classList.add("hidden"); return; }
+  STATE=data; $("invalid").classList.add("hidden"); $("main").classList.remove("hidden");
+  $("empName").textContent = data.name;
+  $("todayStr").textContent = "امروز: " + isoToShamsi(data.today);
+
+  const pill=$("statusPill"), info=$("todayInfo"), act=$("actionWrap");
+  if(data.checked_out){
+    pill.innerHTML='<span class="pill green">امروز تکمیل شد</span>';
+    info.innerHTML = `شیفت ${SHIFT_FA[data.shift]||"—"}${data.late_minutes>0?` • تأخیر ${faD(data.late_minutes)} دقیقه`:""}`;
+    act.innerHTML = '<div class="note info center">ورود و خروج امروز ثبت شده است. ممنون! 🌷</div>';
+  } else if(data.open){
+    pill.innerHTML='<span class="pill amber">در حال کار</span>';
+    info.innerHTML = `شیفت ${SHIFT_FA[data.shift]||"—"}${data.late_minutes>0?` • تأخیر ${faD(data.late_minutes)} دقیقه`:""}`;
+    act.innerHTML = '<button class="btn out" id="doOut">🚪 ثبت خروج</button>';
+    $("doOut").onclick = ()=>punch("out");
+  } else {
+    pill.innerHTML='<span class="pill gray">هنوز ثبت نشده</span>';
+    info.innerHTML = 'برای شروع شیفت، روی «ثبت ورود» بزنید. باید داخل کافه باشید.';
+    act.innerHTML = '<button class="btn" id="doIn">📍 ثبت ورود</button>';
+    $("doIn").onclick = ()=>punch("in");
+  }
+  $("actionNote").innerHTML="";
+  loadHistory();
+}
+
+async function punch(kind){
+  const btn = $(kind==="in"?"doIn":"doOut"); if(btn) btn.disabled=true;
+  $("actionNote").innerHTML="";
+  try{
+    const {lat,lng} = await getLocation();
+    const fn = kind==="in" ? "att_check_in" : "att_check_out";
+    const { data, error } = await db.rpc(fn,{p_token:TOKEN, p_lat:lat, p_lng:lng});
+    if(error) throw new Error(error.message);
+    if(kind==="in"){
+      let m = `✓ ورود ثبت شد — شیفت ${SHIFT_FA[data.shift]||""}.`;
+      if(data.late_minutes>10) m += ` با ${faD(data.late_minutes)} دقیقه تأخیر (بیش از ارفاق ۱۰ دقیقه‌ای، مشمول کسر).`;
+      else if(data.late_minutes>0) m += ` ${faD(data.late_minutes)} دقیقه تأخیر (داخل ارفاق مجاز).`;
+      else m += " به‌موقع.";
+      $("actionNote").innerHTML=`<div class="note ok">${m}</div>`;
+    } else {
+      $("actionNote").innerHTML='<div class="note ok">✓ خروج ثبت شد. خسته نباشید! 🌟</div>';
+    }
+    await refresh();
+  }catch(e){
+    $("actionNote").innerHTML=`<div class="note err">${humanError(e.message)}</div>`;
+    if(btn) btn.disabled=false;
+  }
+}
+
+// ---- تاریخچه ----
+const LV_TYPE={daily:"روزانه",hourly:"ساعتی"};
+const LV_STATUS={pending:'<span class="pill amber">در انتظار</span>',approved:'<span class="pill green">تأیید شد</span>',rejected:'<span class="pill red">رد شد</span>'};
+async function loadHistory(){
+  const { data, error } = await db.rpc("att_my_status",{p_token:TOKEN});
+  if(error||!data) return;
+  const lv=data.leaves||[];
+  $("myLeaves").innerHTML = lv.length ? lv.map(l=>`
+    <div style="border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:9px">
+      <div class="row"><b>${LV_TYPE[l.type]||l.type}</b>
+        <span class="muted" style="font-size:12.5px">${l.type==="hourly"?`${isoToShamsi(l.start_date)} • ${faD(l.hours)} ساعت`:`${isoToShamsi(l.start_date)} تا ${isoToShamsi(l.end_date)}`}</span>
+        <span style="margin-inline-start:auto">${LV_STATUS[l.status]||""}</span></div>
+      ${l.reason?`<div class="muted" style="font-size:12.5px;margin-top:5px">${l.reason}</div>`:""}
+      ${l.admin_note?`<div style="font-size:12.5px;margin-top:5px;color:var(--accent)">پاسخ مدیر: ${l.admin_note}</div>`:""}
+    </div>`).join("") : '<div class="muted" style="font-size:13px">درخواستی ثبت نشده.</div>';
+
+  const at=data.attendance||[];
+  $("myAtt").innerHTML = at.length ? `<table><thead><tr><th>تاریخ</th><th>شیفت</th><th>ورود</th><th>خروج</th><th>تأخیر</th></tr></thead><tbody>${
+    at.map(a=>`<tr><td>${isoToShamsi(a.work_date)}</td><td>${(SHIFT_FA[a.shift]||"—").split(" ")[0]}</td>
+      <td>${clock(a.check_in)}</td><td>${clock(a.check_out)}</td>
+      <td style="${a.late_minutes>10?'color:var(--danger);font-weight:700':''}">${a.late_minutes>0?faD(a.late_minutes)+" د":"—"}</td></tr>`).join("")
+  }</tbody></table>` : '<div class="muted" style="font-size:13px">ترددی ثبت نشده.</div>';
+}
+
+// ---- فرم مرخصی ----
+$("lv_type").onchange = (e)=>{
+  const hourly = e.target.value==="hourly";
+  $("hourlyFields").classList.toggle("hidden",!hourly);
+  $("dailyFields").classList.toggle("hidden",hourly);
+};
+$("lvSubmit").onclick = async ()=>{
+  const type=$("lv_type").value;
+  let p_start,p_end,p_hours=null;
+  if(type==="daily"){
+    p_start=shamsiToISO($("lv_start").value); p_end=shamsiToISO($("lv_end").value);
+    if(!p_start||!p_end) return toast("تاریخ شروع و پایان را انتخاب کنید");
+  } else {
+    p_start=shamsiToISO($("lv_hdate").value); p_end=p_start; p_hours=Number($("lv_hours").value);
+    if(!p_start) return toast("تاریخ را انتخاب کنید");
+    if(!p_hours||p_hours<=0) return toast("تعداد ساعت را وارد کنید");
+  }
+  $("lvSubmit").disabled=true;
+  const { error } = await db.rpc("att_request_leave",{p_token:TOKEN,p_type:type,p_start,p_end,p_hours,p_reason:$("lv_reason").value.trim()||null});
+  $("lvSubmit").disabled=false;
+  if(error) return toast(humanError(error.message));
+  toast("✓ درخواست مرخصی ثبت شد و برای مدیر ارسال شد");
+  $("lv_start").value=$("lv_end").value=$("lv_hdate").value=$("lv_hours").value=$("lv_reason").value="";
+  loadHistory();
+};
+
+// ---- شروع ----
+if(typeof jalaliDatepicker!=="undefined") jalaliDatepicker.startWatch({time:false,persianDigit:true,autoHide:true});
+if(!TOKEN){ $("invalid").classList.remove("hidden"); }
+else { refresh(); }
+</script>
+</body>
+</html>
