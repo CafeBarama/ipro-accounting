@@ -229,8 +229,8 @@ end $$;
 create or replace function att_check_in(p_token text, p_lat double precision, p_lng double precision)
 returns json language plpgsql security definer set search_path=public as $$
 declare e record; loc_ts timestamp; today date; mins int; sh text; startm int; late int; dist double precision; existing record;
-  c_lat constant double precision := 30.918284219874156;
-  c_lng constant double precision := 52.633794665333205;
+  c_lat constant double precision := 29.633853437124454;
+  c_lng constant double precision := 52.47678888090585;
   c_radius constant double precision := 50;
 begin
   select * into e from employees where att_token=p_token and end_date is null;
@@ -257,8 +257,8 @@ end $$;
 create or replace function att_check_out(p_token text, p_lat double precision, p_lng double precision)
 returns json language plpgsql security definer set search_path=public as $$
 declare e record; loc_ts timestamp; today date; dist double precision; rec record;
-  c_lat constant double precision := 30.918284219874156;
-  c_lng constant double precision := 52.633794665333205;
+  c_lat constant double precision := 29.633853437124454;
+  c_lng constant double precision := 52.47678888090585;
   c_radius constant double precision := 50;
 begin
   select * into e from employees where att_token=p_token and end_date is null;
