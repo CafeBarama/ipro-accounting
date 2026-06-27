@@ -121,13 +121,11 @@ function renderStaff(){
   const list=EMPLOYEES.filter(e=>!term || (e.full_name||"").includes(term) || (e.phone||"").includes(term));
   $("staffEmpty").style.display = EMPLOYEES.length? "none":"block";
   $("staffList").innerHTML = list.map(e=>{
-    const t=totals(e.id);
     return `<div class="emp-card" onclick="openEmployee(${e.id})" style="${e.end_date?'opacity:.7':''}">
       <div class="avatar">${initials(e.full_name)}</div>
       <div style="flex:1">
         <b>${e.full_name}</b> ${e.end_date?`<span class="pill" style="background:#fdecea;color:var(--danger)">ترک کار</span>`:(reviewDue(e)?`<span class="pill" style="background:#fff5e8;color:var(--accent)">موعد بازبینی حقوق</span>`:``)}
-        <div class="muted" style="font-size:12.5px">${e.position||"—"} • حقوق ${toman(e.monthly_salary)}</div>
-        <div style="font-size:12.5px;margin-top:4px">مانده: <b style="color:${t.remaining>0?'var(--danger)':'var(--ok)'}">${toman(t.remaining)}</b></div>
+        <div class="muted" style="font-size:12.5px;margin-top:4px">${e.position||"—"}</div>
       </div>
     </div>`;
   }).join("");
