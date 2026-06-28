@@ -488,6 +488,9 @@ function renderReport(){
 /* ---------------- حضور و غیاب: ابزار تاریخ ---------------- */
 const J_MONTHS=["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
 const SHIFT_FA={morning:"صبح",evening:"عصر"};
+// تاریخ‌هایی (به میلادی، همان work_date) که کسر تأخیر برایشان اعمال نمی‌شود
+// مثلاً روزی که لینک حضور و غیاب دیر به دست نیروها رسید.
+const LATE_EXEMPT_DATES = new Set(["2026-06-28"]); // ۱۴۰۵/۰۴/۰۷
 const pad2=(n)=>String(n).padStart(2,"0");
 function jToday(){ const d=new Date(); return jalaali.toJalaali(d.getFullYear(),d.getMonth()+1,d.getDate()); }
 function jMonthRange(jy,jm){
@@ -569,7 +572,7 @@ function renderAttendance(){
     const recs=monthAtt.filter(a=>a.employee_id===id);
     const days=new Set(recs.filter(a=>a.check_in).map(a=>a.work_date)).size;
     const totalLate=recs.reduce((s,a)=>s+(+a.late_minutes||0),0);
-    const lateDed=recs.reduce((s,a)=>s+Math.max(0,(+a.late_minutes||0)-10)*ds/480,0);
+    const lateDed=recs.reduce((s,a)=>s+(LATE_EXEMPT_DATES.has(a.work_date)?0:Math.max(0,(+a.late_minutes||0)-10)*ds/480),0);
     const lvHours=monthLeave.filter(l=>l.employee_id===id).reduce((s,l)=>s+(+l.hours||0),0);
     const excess=Math.max(0,lvHours-16);
     const leaveDed=excess*ds/8;
