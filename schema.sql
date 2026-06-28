@@ -287,7 +287,7 @@ begin
   if p_start is null then raise exception 'BAD_DATE'; end if;
   if p_type='daily' then
     if p_end is null or p_end < p_start then raise exception 'BAD_RANGE'; end if;
-    days := (p_end - p_start) + 1; hrs := days*8;
+    days := (p_end - p_start) + 1; hrs := days*24;
     insert into leave_requests(employee_id,type,start_date,end_date,hours,reason)
       values(e.id,'daily',p_start,p_end,hrs,p_reason);
   else

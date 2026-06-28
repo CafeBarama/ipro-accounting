@@ -528,12 +528,13 @@ function renderLeaves(){
         <div>${LV_BADGE[l.status]||""}</div></div>
       ${l.reason?`<div style="font-size:13px;margin-top:10px"><span class="muted">توضیح نیرو:</span> ${l.reason}</div>`:""}
       ${l.admin_note?`<div style="font-size:13px;margin-top:6px;color:var(--accent)">پاسخ مدیر: ${l.admin_note}</div>`:""}
-      ${l.status==="pending"?`
-        <div class="row" style="margin-top:12px">
-          <input id="lvnote_${l.id}" placeholder="یادداشت برای نیرو (اختیاری)" style="flex:1">
+      <div class="row" style="margin-top:12px">
+        <button class="btn gray sm" onclick="editLeave(${l.id})">✎ ویرایش</button>
+        ${l.status==="pending"?`<div class="spacer"></div>
+          <input id="lvnote_${l.id}" placeholder="یادداشت (اختیاری)" style="flex:1;min-width:130px">
           <button class="btn sm" style="background:var(--ok)" onclick="decideLeave(${l.id},'approved')">✓ تأیید</button>
-          <button class="btn sm" style="background:var(--danger)" onclick="decideLeave(${l.id},'rejected')">✕ رد</button>
-        </div>`:""}
+          <button class="btn sm" style="background:var(--danger)" onclick="decideLeave(${l.id},'rejected')">✕ رد</button>`:""}
+      </div>
     </div>`;
   }).join("");
 }
@@ -574,8 +575,8 @@ function renderAttendance(){
     const totalLate=recs.reduce((s,a)=>s+(+a.late_minutes||0),0);
     const lateDed=recs.reduce((s,a)=>s+(LATE_EXEMPT_DATES.has(a.work_date)?0:Math.max(0,(+a.late_minutes||0)-10)*ds/480),0);
     const lvHours=monthLeave.filter(l=>l.employee_id===id).reduce((s,l)=>s+(+l.hours||0),0);
-    const excess=Math.max(0,lvHours-16);
-    const leaveDed=excess*ds/8;
+    const excess=Math.max(0,lvHours-48);
+    const leaveDed=excess*ds/24;
     const total=Math.round(lateDed+leaveDed);
     return `<tr>
       <td><b>${e.full_name||"—"}</b></td>
@@ -598,6 +599,7 @@ function renderAttendance(){
     <td>${jalali(a.work_date)}</td><td>${e.full_name||"—"}</td>
     <td>${SHIFT_FA[a.shift]||"—"}</td><td>${clockOf(a.check_in)}</td><td>${clockOf(a.check_out)}</td>
     <td style="${a.late_minutes>10?'color:var(--danger);font-weight:700':''}">${a.late_minutes>0?faD(a.late_minutes)+" د":"—"}</td>
+    <td style="text-align:left;white-space:nowrap"><button class="btn ghost sm" onclick="editAtt(${a.id})">ویرایش</button> <button class="btn danger sm" onclick="delAtt(${a.id})">حذف</button></td>
   </tr>`; }).join("");
 }
 window.applyAttDeduction=async(empId,jy,jm,amount)=>{
@@ -610,6 +612,90 @@ window.applyAttDeduction=async(empId,jy,jm,amount)=>{
   if(error) return toast("خطا: "+error.message);
   toast("✓ کسر به‌عنوان جریمه ثبت شد"); await loadAll();
 };
+
+/* ---------------- ثبت/ویرایش دستی تردد ---------------- */
+const attDlg=$("attDialog");
+attDlg.showModal=()=>attDlg.classList.add("open"); attDlg.close=()=>attDlg.classList.remove("open");
+function fillEmpSelect(sel,val){
+  sel.innerHTML = EMPLOYEES.filter(e=>!e.end_date).map(e=>`<option value="${e.id}">${e.full_name}</option>`).join("");
+  if(val) sel.value=val;
+}
+function tsTehran(shamsi,timeStr){
+  const iso=shamsiToISO(shamsi); if(!iso) return null;
+  let t=String(timeStr||"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).trim();
+  const m=t.match(/^(\d{1,2})\s*[:.،]?\s*(\d{1,2})$/) || t.match(/^(\d{1,2})$/);
+  if(!m) return null;
+  const h=Math.min(23,+m[1]), mm=Math.min(59,+(m[2]||0));
+  return { ts:`${iso}T${String(h).padStart(2,"0")}:${String(mm).padStart(2,"0")}:00+03:30`, minutes:h*60+mm, iso };
+}
+function timeOfTehran(ts){ if(!ts) return ""; return new Date(ts).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Asia/Tehran"}); }
+function openAttDialog(rec){
+  $("attDlgTitle").textContent = rec? "ویرایش تردد":"ثبت دستی تردد";
+  $("at_id").value = rec?.id||"";
+  fillEmpSelect($("at_emp"), rec?.employee_id || CURRENT || (EMPLOYEES[0]&&EMPLOYEES[0].id));
+  $("at_date").value = rec? isoToShamsi(rec.work_date) : todayShamsiStr();
+  $("at_shift").value = rec?.shift || "";
+  $("at_in").value = rec? timeOfTehran(rec.check_in) : "";
+  $("at_out").value = rec&&rec.check_out? timeOfTehran(rec.check_out) : "";
+  attDlg.showModal();
+}
+window.editAtt=(id)=>openAttDialog(ATT.find(x=>x.id===id));
+$("manualAttBtn").onclick=()=>openAttDialog(null);
+$("atCancel").onclick=()=>attDlg.close();
+$("atSave").onclick=async()=>{
+  const empId=+$("at_emp").value; if(!empId) return toast("نیرو را انتخاب کنید");
+  const ci=tsTehran($("at_date").value, $("at_in").value);
+  if(!ci) return toast("تاریخ و ساعت ورود را درست وارد کنید (مثل 08:05)");
+  const sh=$("at_shift").value || (ci.minutes<810?"morning":"evening");
+  const late=Math.max(0, ci.minutes-(sh==="morning"?480:900));
+  const rec={ employee_id:empId, work_date:ci.iso, shift:sh, check_in:ci.ts, late_minutes:late };
+  const coStr=$("at_out").value.trim();
+  rec.check_out = coStr ? (tsTehran($("at_date").value,coStr)||{}).ts || null : null;
+  const id=$("at_id").value;
+  const res = id ? await db.from("attendance").update(rec).eq("id",id) : await db.from("attendance").insert(rec);
+  if(res.error){ console.error(res.error); return toast("خطا: "+res.error.message); }
+  toast("✓ تردد ثبت شد"); attDlg.close(); await loadAll();
+};
+window.delAtt=async(id)=>{ if(!confirm("این رکورد تردد حذف شود؟"))return;
+  const {error}=await db.from("attendance").delete().eq("id",id);
+  if(error)return toast("خطا در حذف"); toast("حذف شد"); await loadAll(); };
+
+/* ---------------- ویرایش مرخصی ---------------- */
+const leaveDlg=$("leaveDialog");
+leaveDlg.showModal=()=>leaveDlg.classList.add("open"); leaveDlg.close=()=>leaveDlg.classList.remove("open");
+function lvToggleType(){ const hourly=$("lv_etype").value==="hourly";
+  $("lv_ehoursWrap").style.display=hourly?"block":"none";
+  $("lv_eendWrap").style.display=hourly?"none":"block"; }
+$("lv_etype").onchange=lvToggleType;
+window.editLeave=(id)=>{
+  const l=LEAVES.find(x=>x.id===id); if(!l) return;
+  const e=EMPLOYEES.find(x=>x.id===l.employee_id)||{};
+  $("lv_id").value=l.id; $("lv_emp").textContent=e.full_name||"";
+  $("lv_etype").value=l.type; $("lv_estatus").value=l.status||"pending";
+  $("lv_estart").value=isoToShamsi(l.start_date); $("lv_eend").value=isoToShamsi(l.end_date);
+  $("lv_ehours").value=l.hours||""; $("lv_ereason").value=l.reason||""; $("lv_enote").value=l.admin_note||"";
+  lvToggleType(); leaveDlg.showModal();
+};
+$("lvCancelEdit").onclick=()=>leaveDlg.close();
+$("lvSaveEdit").onclick=async()=>{
+  const id=$("lv_id").value; if(!id) return;
+  const type=$("lv_etype").value;
+  const start=shamsiToISO($("lv_estart").value);
+  if(!start) return toast("تاریخ شروع را وارد کنید");
+  const rec={ type, status:$("lv_estatus").value, start_date:start,
+    reason:$("lv_ereason").value.trim()||null, admin_note:$("lv_enote").value.trim()||null,
+    decided_at:new Date().toISOString() };
+  if(type==="daily"){ const end=shamsiToISO($("lv_eend").value); if(!end||end<start) return toast("تاریخ پایان نامعتبر است");
+    rec.end_date=end; rec.hours=(((new Date(end)-new Date(start))/86400000)+1)*24; }
+  else { const h=Number($("lv_ehours").value); if(!h||h<=0) return toast("تعداد ساعت را وارد کنید"); rec.end_date=start; rec.hours=h; }
+  const {error}=await db.from("leave_requests").update(rec).eq("id",id);
+  if(error)return toast("خطا: "+error.message);
+  toast("✓ مرخصی ویرایش شد"); leaveDlg.close(); await loadAll();
+};
+window.delLeave=async(id)=>{ if(!confirm("این درخواست مرخصی حذف شود؟"))return;
+  const {error}=await db.from("leave_requests").delete().eq("id",id);
+  if(error)return toast("خطا در حذف"); toast("حذف شد"); leaveDlg.close(); await loadAll(); };
+$("lvDeleteBtn").onclick=()=>{ const id=$("lv_id").value; if(id) delLeave(+id); };
 
 /* ---------------- شروع ---------------- */
 if(typeof jalaliDatepicker!=="undefined") jalaliDatepicker.startWatch({time:false,persianDigit:true,autoHide:true});

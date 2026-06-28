@@ -216,10 +216,11 @@
         <div class="spacer"></div>
         <select id="att_year" style="max-width:110px"></select>
         <select id="att_month" style="max-width:130px"></select>
+        <button class="btn ghost sm" id="manualAttBtn">+ ثبت دستی تردد</button>
       </div>
       <div class="sub" style="margin-top:12px;line-height:1.9">
         ارفاق تأخیر: ۱۰ دقیقه در هر روز • کسر تأخیر = حقوق روزانه × (دقایق تأخیر بعد از ارفاق ÷ ۴۸۰)<br>
-        سهمیهٔ مرخصی: ۱۶ ساعت (۲ روز) با حقوق در هر ماه • مازاد = حقوق روزانه × (ساعت مازاد ÷ ۸)
+        سهمیهٔ مرخصی: ۴۸ ساعت (۲ روز) با حقوق در هر ماه • مازاد = حقوق روزانه × (ساعت مازاد ÷ ۲۴)
       </div>
     </div>
     <div class="card">
@@ -236,7 +237,7 @@
     <div class="card">
       <div class="h3">جزئیات تردد این ماه</div>
       <div style="overflow:auto"><table id="attLogTable">
-        <thead><tr><th>تاریخ</th><th>نام</th><th>شیفت</th><th>ورود</th><th>خروج</th><th>تأخیر</th></tr></thead><tbody></tbody>
+        <thead><tr><th>تاریخ</th><th>نام</th><th>شیفت</th><th>ورود</th><th>خروج</th><th>تأخیر</th><th></th></tr></thead><tbody></tbody>
       </table></div>
       <div class="empty" id="attLogEmpty" style="display:none">رکوردی نیست.</div>
     </div>
@@ -347,6 +348,47 @@
   <div class="row" style="margin-top:18px">
     <button class="btn" id="rzSave">ذخیره و به‌روزرسانی حقوق</button>
     <button class="btn gray" id="rzCancel">انصراف</button>
+  </div>
+</div></div>
+
+<!-- دیالوگ ثبت/ویرایش دستی تردد -->
+<div id="attDialog" class="modal-ovl"><div class="modal-body">
+  <h2 id="attDlgTitle">ثبت دستی تردد</h2>
+  <input type="hidden" id="at_id">
+  <div class="grid g2" style="margin-top:8px">
+    <div><label>نیرو *</label><select id="at_emp"></select></div>
+    <div><label>تاریخ *</label><input id="at_date" type="text" data-jdp data-jdp-only-date readonly autocomplete="off" placeholder="انتخاب تاریخ" style="background:#fbfbfd;cursor:pointer"></div>
+    <div><label>شیفت</label><select id="at_shift"><option value="">تشخیص خودکار</option><option value="morning">صبح (۸–۱۶)</option><option value="evening">عصر (۱۵–۲۳)</option></select></div>
+    <div></div>
+    <div><label>ساعت ورود * (مثل ۰۸:۰۵)</label><input id="at_in" type="text" inputmode="numeric" placeholder="08:05" dir="ltr"></div>
+    <div><label>ساعت خروج (اختیاری)</label><input id="at_out" type="text" inputmode="numeric" placeholder="16:00" dir="ltr"></div>
+  </div>
+  <div class="sub" style="margin-top:10px">تأخیر به‌صورت خودکار از روی ساعت ورود و شیفت حساب می‌شود.</div>
+  <div class="row" style="margin-top:18px">
+    <button class="btn" id="atSave">ذخیره</button>
+    <button class="btn gray" id="atCancel">انصراف</button>
+  </div>
+</div></div>
+
+<!-- دیالوگ ویرایش مرخصی -->
+<div id="leaveDialog" class="modal-ovl"><div class="modal-body">
+  <h2>ویرایش مرخصی</h2>
+  <input type="hidden" id="lv_id">
+  <div class="sub" id="lv_emp"></div>
+  <div class="grid g2" style="margin-top:8px">
+    <div><label>نوع</label><select id="lv_etype"><option value="daily">روزانه</option><option value="hourly">ساعتی</option></select></div>
+    <div><label>وضعیت</label><select id="lv_estatus"><option value="pending">در انتظار</option><option value="approved">تأیید</option><option value="rejected">رد</option></select></div>
+    <div><label>از تاریخ</label><input id="lv_estart" type="text" data-jdp data-jdp-only-date readonly autocomplete="off" placeholder="انتخاب تاریخ" style="background:#fbfbfd;cursor:pointer"></div>
+    <div id="lv_eendWrap"><label>تا تاریخ</label><input id="lv_eend" type="text" data-jdp data-jdp-only-date readonly autocomplete="off" placeholder="انتخاب تاریخ" style="background:#fbfbfd;cursor:pointer"></div>
+    <div id="lv_ehoursWrap"><label>تعداد ساعت</label><input id="lv_ehours" type="number" min="0.5" step="0.5"></div>
+  </div>
+  <div style="margin-top:12px"><label>توضیح نیرو</label><input id="lv_ereason"></div>
+  <div style="margin-top:12px"><label>یادداشت مدیر (برای نیرو)</label><input id="lv_enote"></div>
+  <div class="row" style="margin-top:18px">
+    <button class="btn" id="lvSaveEdit">ذخیره</button>
+    <button class="btn gray" id="lvCancelEdit">انصراف</button>
+    <div class="spacer"></div>
+    <button class="btn danger" id="lvDeleteBtn">حذف درخواست</button>
   </div>
 </div></div>
 
