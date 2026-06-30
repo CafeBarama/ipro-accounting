@@ -69,8 +69,47 @@ document.querySelectorAll("#nav button[data-tab]").forEach(b=>{
     if(b.dataset.tab==="report") renderReport();
     if(b.dataset.tab==="attendance") renderAttendance();
     if(b.dataset.tab==="leaves") renderLeaves();
+    if(b.dataset.tab==="cafe") renderCafe();
   };
 });
+
+/* ============================================================
+   حسابداری کافه — درآمد از سفارش‌ها + هزینه‌های ثبت‌شده
+   ============================================================ */
+function cafeMonthRange(){
+  try{
+    const d=new Date(); const j=jalaali.toJalaali(d.getFullYear(),d.getMonth()+1,d.getDate());
+    const g1=jalaali.toGregorian(j.jy,j.jm,1);
+    const dim=j.jm<=6?31:(j.jm<=11?30:(jalaali.isLeapJalaaliYear(j.jy)?30:29));
+    const g2=jalaali.toGregorian(j.jy,j.jm,dim);
+    const iso=g=>`${g.gy}-${String(g.gm).padStart(2,"0")}-${String(g.gd).padStart(2,"0")}`;
+    return [iso(g1),iso(g2)];
+  }catch(e){ const t=todayISO(); return [t.slice(0,8)+"01",t]; }
+}
+let cafeInit=false;
+async function renderCafe(){
+  if(!cafeInit){ const [a,b]=cafeMonthRange(); $("cf_from").value=a; $("cf_to").value=b;
+    $("cf_apply").onclick=renderCafe; $("cf_month").onclick=()=>{ const [x,y]=cafeMonthRange(); $("cf_from").value=x; $("cf_to").value=y; renderCafe(); };
+    cafeInit=true; }
+  const from=$("cf_from").value, to=$("cf_to").value;
+  if(!from||!to) return;
+  const { data:orders, error:e1 } = await db.from("orders").select("total,order_date").gte("order_date",from).lte("order_date",to);
+  if(e1){ console.error(e1); toast("خطا در خواندن سفارش‌ها"); }
+  const income=(orders||[]).reduce((a,o)=>a+(+o.total||0),0);
+  const { data:exps, error:e2 } = await db.from("expenses").select("*").gte("exp_date",from).lte("exp_date",to).order("exp_date",{ascending:false});
+  if(e2){ console.error(e2); toast("خطا در خواندن هزینه‌ها"); }
+  const expense=(exps||[]).reduce((a,x)=>a+(+x.amount||0),0);
+  $("cf_income").textContent=toman(income);
+  $("cf_expense").textContent=toman(expense);
+  $("cf_profit").textContent=toman(income-expense);
+  $("cf_meta").textContent=`${fa((orders||[]).length)} سفارش • ${fa((exps||[]).length)} هزینه • از ${jalali(from)} تا ${jalali(to)}`;
+  $("cfTable").querySelector("tbody").innerHTML=(exps||[]).length
+    ? (exps||[]).map(x=>`<tr><td>${jalali(x.exp_date)}</td><td>${x.category||"—"}</td><td>${x.title||"—"}</td><td><b>${fa(x.amount)}</b> ت</td><td>${x.note||""}</td><td><button class="btn danger sm" onclick="window.delCafeExp(${x.id})">حذف</button></td></tr>`).join("")
+    : `<tr><td colspan="6" class="empty" style="text-align:center;padding:20px">هزینه‌ای در این بازه نیست.</td></tr>`;
+}
+window.delCafeExp=async(id)=>{ if(!confirm("این هزینه حذف شود؟"))return;
+  const {error}=await db.from("expenses").delete().eq("id",id); if(error){console.error(error);return toast("خطا در حذف");}
+  toast("حذف شد"); renderCafe(); };
 $("backBtn").onclick = ()=> showTab("staff");
 function showTab(name){
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));

@@ -103,6 +103,7 @@
       <button data-tab="attendance">حضور و غیاب</button>
       <button data-tab="leaves">مرخصی‌ها <span id="leaveBadge" class="pill" style="background:#fdecea;color:var(--danger);display:none"></span></button>
       <button data-tab="report">گزارش کلی</button>
+      <button data-tab="cafe">حسابداری کافه</button>
       <span class="muted" id="whoami" style="font-size:12px"></span>
       <a class="btn gray sm" href="https://cafebarama.github.io/cafe-barama/" style="text-decoration:none">⟵ داشبورد</a>
       <button class="btn gray sm" id="logoutBtn">خروج</button>
@@ -274,6 +275,34 @@
             <th>خالص</th><th>پرداختی</th><th>مانده</th>
           </tr></thead><tbody></tbody>
         </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== حسابداری کافه (هزینه‌ها + درآمد + سود) ===== -->
+  <section id="tab-cafe" class="tab">
+    <div class="card">
+      <h2>حسابداری کافه</h2>
+      <div class="sub">درآمد از سفارش‌ها و هزینه‌های ثبت‌شده در سفارش‌گیری.</div>
+      <div class="row">
+        <div><label>از تاریخ</label><input type="date" id="cf_from"></div>
+        <div><label>تا تاریخ</label><input type="date" id="cf_to"></div>
+        <div style="align-self:end"><button class="btn" id="cf_apply">محاسبه</button></div>
+        <div style="align-self:end"><button class="btn gray" id="cf_month">این ماه</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        <div style="background:#e6f4f0;color:#2e7d6b;border-radius:14px;padding:18px">درآمد (فروش)<b id="cf_income" style="display:block;font-size:24px;margin-top:6px">۰ ت</b></div>
+        <div style="background:#fdecea;color:#a5342c;border-radius:14px;padding:18px">هزینه‌ها<b id="cf_expense" style="display:block;font-size:24px;margin-top:6px">۰ ت</b></div>
+        <div style="background:#fff5e8;color:#a5632a;border-radius:14px;padding:18px">سود<b id="cf_profit" style="display:block;font-size:24px;margin-top:6px">۰ ت</b></div>
+      </div>
+      <div class="muted" id="cf_meta" style="margin-top:14px;font-size:13px"></div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:16px;margin-bottom:12px">جزئیات هزینه‌ها</h2>
+      <div style="overflow:auto">
+        <table id="cfTable"><thead><tr><th>تاریخ</th><th>دسته</th><th>عنوان</th><th>مبلغ</th><th>یادداشت</th><th></th></tr></thead><tbody></tbody></table>
       </div>
     </div>
   </section>
